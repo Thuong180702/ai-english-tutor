@@ -435,13 +435,15 @@ export default function App() {
   };
 
   const calculateScore = (stats = null) => {
-      const totalSentences = currentCourse?.sentences?.length || 0;
+      const totalSentences = currentCourse?.sentences?.length || 1;
       const successfullyCompleted = completedSentences.filter(Boolean).length;
-      const skippedCount = totalSentences - successfullyCompleted;
-      const baseScore = 100;
       const currentStats = stats || statsRef.current;
-      const penalty = (currentStats.mistakes * 2) + (currentStats.hints * 0) + (currentStats.fullAnswers * 15) + (skippedCount * 10);
-      return Math.max(0, baseScore - penalty);
+      // Tính tỷ lệ hoàn thành (0-100)
+      const completionRate = (successfullyCompleted / totalSentences) * 100;
+      // Penalty cho lỗi sai và gợi ý
+      const penalty = (currentStats.mistakes * 3) + (currentStats.fullAnswers * 10);
+      // Điểm = tỷ lệ hoàn thành - penalty, tối thiểu 0
+      return Math.max(0, Math.round(completionRate - penalty));
   };
 
   const handleSaveResult = async () => {
@@ -663,24 +665,24 @@ export default function App() {
                 )}
 
                 {authMode !== 'forgot' && (
-                    <div className="flex bg-slate-700 rounded-lg p-1 mb-6">
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? 'bg-slate-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? 'bg-slate-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>Đăng ký</button>
+                    <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-lg p-1 mb-6`}>
+                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-slate-900') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Đăng nhập</button>
+                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-slate-900') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Đăng ký</button>
                     </div>
                 )}
-                
+
                 {authMode === 'forgot' ? (
                     <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in">
-                        <div className="text-left"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Email đăng ký</label><div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="w-full p-4 pl-12 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1" required /></div></div>
+                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email đăng ký</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
                         {resetEmailSent ? (<div className="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Đã gửi link khôi phục!</div>) : (authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>)}
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
-                        <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className="w-full text-slate-400 hover:text-white text-sm underline mt-2">Quay lại Đăng nhập</button>
+                        <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} text-sm underline mt-2`}>Quay lại Đăng nhập</button>
                     </form>
                 ) : (
                     <form onSubmit={authMode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4 animate-in fade-in">
-                        {authMode === 'register' && (<div className="text-left"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Tên hiển thị</label><input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="VD: Minh Tú" className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1" required /></div>)}
-                        <div className="text-left"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Email</label><div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className="w-full p-4 pl-12 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1" required /></div></div>
-                        <div className="text-left"><label className="text-xs font-bold text-slate-500 uppercase ml-1">Mật khẩu</label><div className="relative"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full p-4 pl-12 rounded-xl bg-slate-900 border border-slate-700 text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1" required /></div></div>
+                        {authMode === 'register' && (<div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Tên hiển thị</label><input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="VD: Minh Tú" className={`w-full p-4 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div>)}
+                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
+                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Mật khẩu</label><div className="relative"><Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
                         {authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
                         {authMode === 'login' && (<div className="text-right"><button type="button" onClick={() => { setAuthMode('forgot'); setAuthError(""); }} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold">Quên mật khẩu?</button></div>)}
                         <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</button>
@@ -689,8 +691,8 @@ export default function App() {
 
                 {authMode !== 'forgot' && (
                     <div className="mt-6 flex flex-col gap-3 animate-in fade-in">
-                        <button onClick={handleGoogleLogin} className="w-full bg-white hover:bg-gray-100 text-slate-900 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"><span className="text-lg font-bold text-blue-600">G</span> Tiếp tục với Google</button>
-                        <button onClick={handleGuestLogin} className="text-slate-500 text-sm hover:text-white underline">Dùng thử không cần tài khoản</button>
+                        <button onClick={handleGoogleLogin} className="w-full bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"><span className="text-lg font-bold">G</span> Tiếp tục với Google</button>
+                        <button onClick={handleGuestLogin} className={`${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-600 hover:text-slate-900'} text-sm underline`}>Dùng thử không cần tài khoản</button>
                     </div>
                 )}
             </div>
@@ -742,15 +744,16 @@ export default function App() {
             {/* Context Menu */}
             {contextMenu.visible && (
                 <div
-                    className={`fixed z-50 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-2xl py-2 min-w-[150px]`}
-                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    className={`fixed z-50 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-2xl py-2`}
+                    style={{ top: contextMenu.y, left: contextMenu.x, minWidth: '180px' }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <button
                         onClick={() => handleDeleteHistory(contextMenu.itemId)}
-                        className={`w-full px-4 py-2 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-2 text-sm font-medium`}
+                        className="w-full px-4 py-2.5 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-3 text-sm font-medium"
                     >
-                        <X className="w-4 h-4" /> Xóa bài học này
+                        <X className="w-4 h-4 flex-shrink-0" />
+                        <span>Xóa bài học này</span>
                     </button>
                 </div>
             )}
