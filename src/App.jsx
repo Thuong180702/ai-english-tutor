@@ -119,7 +119,7 @@ const getWordDiff = (userText, targetText) => {
 
 // --- API HANDLING ---
 // API Key
-const apiKey = "AIzaSyA4omchntAp2OgZksXeP7DKK5mx4NeVI5k";
+const apiKey = "AIzaSyCe9bP1uKLdytjqdojjYy0TqgoMUmMdq_M";
 
 const generateLessonContent = async (topic, lengthOption) => {
   let lengthPrompt = "";
