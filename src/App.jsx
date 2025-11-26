@@ -744,16 +744,16 @@ export default function App() {
             {/* Context Menu */}
             {contextMenu.visible && (
                 <div
-                    className={`fixed z-50 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-2xl py-2`}
-                    style={{ top: contextMenu.y, left: contextMenu.x, minWidth: '180px' }}
+                    className={`fixed z-50 ${theme.cardBg} border-2 ${theme.cardBorder} rounded-xl shadow-2xl overflow-hidden`}
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
                     onClick={(e) => e.stopPropagation()}
                 >
                     <button
                         onClick={() => handleDeleteHistory(contextMenu.itemId)}
-                        className="w-full px-4 py-2.5 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-3 text-sm font-medium"
+                        className="px-5 py-3 text-red-500 hover:bg-red-500/10 flex items-center gap-3 text-sm font-bold whitespace-nowrap"
                     >
-                        <X className="w-4 h-4 flex-shrink-0" />
-                        <span>Xóa bài học này</span>
+                        <X className="w-4 h-4" />
+                        Xóa bài học này
                     </button>
                 </div>
             )}
@@ -807,6 +807,27 @@ export default function App() {
                 <h2 className={`text-xl font-bold ${theme.text}`}>AI đang viết bài luận...</h2>
                 <p className={`${theme.secondaryText}`}>Chủ đề: <span className="text-indigo-500">"{topicInput}"</span></p>
             </div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- SCREEN: ERROR ---
+  if (appState === "error") {
+    return (
+      <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4`}>
+        <FontStyles />
+        <div className="text-center space-y-6">
+            <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+                <X className="w-10 h-10 text-red-500" />
+            </div>
+            <div className="space-y-2">
+                <h2 className={`text-xl font-bold ${theme.text}`}>Không thể tạo bài học</h2>
+                <p className={`${theme.secondaryText}`}>Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.</p>
+            </div>
+            <button onClick={() => setAppState("home")} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all">
+                Quay lại trang chủ
+            </button>
         </div>
       </div>
     );
