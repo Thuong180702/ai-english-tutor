@@ -884,7 +884,7 @@ export default function App() {
   // --- MAIN RENDER (HOME & LEARNING) ---
   
   return (
-    <div className={`min-h-screen ${theme.bg} ${theme.text} p-4 md:p-6 flex flex-col font-medium transition-colors duration-300 font-sans`}>
+    <div className={`min-h-screen ${theme.bg} ${theme.text} ${appState === 'learning' ? 'p-2 md:p-3' : 'p-4 md:p-6'} flex flex-col font-medium transition-colors duration-300 font-sans`}>
       <FontStyles />
       
       {showConfirmModal && (
@@ -956,7 +956,7 @@ export default function App() {
 
       {appState === 'learning' && currentCourse && (
         <>
-        <header className="w-full mb-6 flex items-center justify-between px-2 lg:px-8">
+        <header className="w-full mb-4 flex items-center justify-between px-1 lg:px-4">
             <div className="flex items-center gap-4">
                 <button onClick={() => setAppState("home")} className={`p-2 hover:${theme.cardBg} rounded-full transition-all ${theme.secondaryText}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
                 <div>
@@ -973,8 +973,8 @@ export default function App() {
             </div>
         </header>
 
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 px-2 lg:px-8">
-            <div className={`lg:col-span-7 ${theme.cardBg} p-6 rounded-3xl shadow-xl border ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
+            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl shadow-xl border ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
                 <div className={`text-base md:text-lg leading-[2.0] ${theme.text} font-sans`}>
                     {currentCourse.sentences.map((sent, sIdx) => {
                         const isCompleted = completedSentences[sIdx];
@@ -996,7 +996,7 @@ export default function App() {
                 </div>
             </div>
 
-            <div className="lg:col-span-5 flex flex-col h-full gap-4 min-h-[500px]">
+            <div className="lg:col-span-4 flex flex-col h-full gap-4 min-h-[500px]">
                 <div className={`flex-1 ${theme.cardBg} rounded-3xl shadow-xl border ${theme.cardBorder} flex flex-col overflow-hidden relative`}>
                     <div className={`flex-1 p-6 overflow-y-auto ${theme.bg} space-y-6 custom-scrollbar`}>
                         <div className="flex gap-4 animate-in slide-in-from-left-4">
