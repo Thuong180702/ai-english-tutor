@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification
 } from 'firebase/auth';
-import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit } from 'firebase/firestore';
+import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, deleteDoc, doc } from 'firebase/firestore';
 
 // --- FIREBASE SETUP ---
 // Cấu hình thủ công (Manual Config) cho dự án của bạn
@@ -257,6 +257,7 @@ export default function App() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
+  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemId: null });
 
   const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
   const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
@@ -545,6 +546,24 @@ export default function App() {
   const confirmFinishEarly = () => { setShowConfirmModal(false); finishLesson(); };
   const cancelFinishEarly = () => setShowConfirmModal(false);
 
+  // --- HISTORY CONTEXT MENU ---
+  const handleHistoryContextMenu = (e, itemId) => {
+      e.preventDefault();
+      setContextMenu({ visible: true, x: e.clientX, y: e.clientY, itemId });
+  };
+
+  const handleDeleteHistory = async (itemId) => {
+      if (!user || !itemId) return;
+      try {
+          await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'history', itemId));
+          setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
+      } catch (err) {
+          console.error("Lỗi xóa lịch sử:", err);
+      }
+  };
+
+  const closeContextMenu = () => setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
+
   const handleShowHint = () => {
       setShowHint(true);
       if (!sentenceStatsRef.current.hintUsed) {
@@ -622,15 +641,18 @@ export default function App() {
   // --- SCREEN: LOGIN & AUTH ---
   if (appState === "login") {
       return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4 text-white font-sans">
+        <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4 ${theme.text} font-sans`}>
             <FontStyles />
-            <div className="max-w-md w-full bg-slate-800 p-8 rounded-3xl shadow-2xl border border-slate-700">
+            <button onClick={toggleTheme} className={`absolute top-4 right-4 p-2.5 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
+                {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+            </button>
+            <div className={`max-w-md w-full ${theme.cardBg} p-8 rounded-3xl shadow-2xl border ${theme.cardBorder}`}>
                 <div className="text-center mb-8">
                     <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
                         <Sparkles className="w-10 h-10 text-white" />
                     </div>
-                    <h1 className="text-3xl font-bold mb-2">AI English Tutor</h1>
-                    <p className="text-slate-400">Đăng nhập để lưu quá trình học tập</p>
+                    <h1 className={`text-3xl font-bold mb-2 ${theme.text}`}>AI English Tutor</h1>
+                    <p className={theme.secondaryText}>Đăng nhập để lưu quá trình học tập</p>
                 </div>
 
                 {verificationSent && (
@@ -679,19 +701,26 @@ export default function App() {
   // --- SCREEN: HISTORY ---
   if (appState === "history") {
       return (
-        <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 font-sans`}>
+        <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 font-sans`} onClick={closeContextMenu}>
             <FontStyles />
             <header className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
                 <button onClick={() => setAppState("home")} className={`flex items-center gap-2 ${theme.secondaryText} hover:${theme.text}`}><ArrowRight className="w-5 h-5 rotate-180" /> Quay lại</button>
                 <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
-                <div className="w-5" />
+                <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
+                    {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                </button>
             </header>
             <div className="max-w-4xl mx-auto space-y-4 pb-10">
                 {historyData.length === 0 ? (
                     <div className={`text-center py-20 ${theme.secondaryText}`}>Bạn chưa có bài học nào.</div>
                 ) : (
                     historyData.map((item) => (
-                        <div key={item.id} onClick={() => setSelectedHistoryItem(item)} className={`${theme.cardBg} p-5 rounded-2xl border ${theme.cardBorder} flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer group`}>
+                        <div
+                            key={item.id}
+                            onClick={() => setSelectedHistoryItem(item)}
+                            onContextMenu={(e) => handleHistoryContextMenu(e, item.id)}
+                            className={`${theme.cardBg} p-5 rounded-2xl border ${theme.cardBorder} flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer group`}
+                        >
                             <div className="flex-1">
                                 <h3 className={`font-bold ${theme.text} text-lg mb-1 group-hover:text-indigo-500 transition-colors`}>{item.topic}</h3>
                                 <div className={`flex items-center gap-4 text-xs ${theme.secondaryText}`}>
@@ -710,6 +739,21 @@ export default function App() {
                     ))
                 )}
             </div>
+            {/* Context Menu */}
+            {contextMenu.visible && (
+                <div
+                    className={`fixed z-50 ${theme.cardBg} border ${theme.cardBorder} rounded-xl shadow-2xl py-2 min-w-[150px]`}
+                    style={{ top: contextMenu.y, left: contextMenu.x }}
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <button
+                        onClick={() => handleDeleteHistory(contextMenu.itemId)}
+                        className={`w-full px-4 py-2 text-left text-red-500 hover:bg-red-500/10 flex items-center gap-2 text-sm font-medium`}
+                    >
+                        <X className="w-4 h-4" /> Xóa bài học này
+                    </button>
+                </div>
+            )}
             {selectedHistoryItem && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-sm" onClick={() => setSelectedHistoryItem(null)}>
                     <div className={`${theme.cardBg} w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
@@ -912,7 +956,7 @@ export default function App() {
 
       {appState === 'learning' && currentCourse && (
         <>
-        <header className="max-w-6xl mx-auto w-full mb-6 flex items-center justify-between">
+        <header className="w-full mb-6 flex items-center justify-between px-2 lg:px-8">
             <div className="flex items-center gap-4">
                 <button onClick={() => setAppState("home")} className={`p-2 hover:${theme.cardBg} rounded-full transition-all ${theme.secondaryText}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
                 <div>
@@ -929,7 +973,7 @@ export default function App() {
             </div>
         </header>
 
-        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0 px-2 lg:px-8">
             <div className={`lg:col-span-7 ${theme.cardBg} p-6 rounded-3xl shadow-xl border ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
                 <div className={`text-base md:text-lg leading-[2.0] ${theme.text} font-sans`}>
                     {currentCourse.sentences.map((sent, sIdx) => {
