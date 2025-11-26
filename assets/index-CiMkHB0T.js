@@ -72,7 +72,7 @@ This typically indicates that your device does not have a healthy Internet conne
         }
       ]
     }
-  `;try{const l=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${c1}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:r}]}],generationConfig:{responseMimeType:"application/json"}})});if(!l.ok)throw new Error("API Call Failed");const c=await l.json();return JSON.parse(c.candidates[0].content.parts[0].text)}catch(l){return console.error("AI Generation Error:",l),null}},ON=async(s,e)=>{const i=`
+  `;try{const l=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${c1}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:r}]}],generationConfig:{responseMimeType:"application/json"}})});if(!l.ok)throw console.error("API Error:",l.status,await l.text()),new Error("API Call Failed");const c=await l.json();return JSON.parse(c.candidates[0].content.parts[0].text)}catch(l){return console.error("AI Generation Error:",l),null}},ON=async(s,e)=>{const i=`
         You are a translation judge. Original Vietnamese: "${e}". User's English: "${s}".
         Task: Does the user's translation convey the CORRECT meaning? Ignore punctuation. Accept synonyms.
         Return JSON ONLY: { "isCorrect": boolean, "feedback": "Short explanation in Vietnamese if wrong, or 'Diễn đạt tốt' if correct" }
