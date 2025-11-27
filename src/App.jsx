@@ -20,7 +20,7 @@ import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTim
 // --- FIREBASE SETUP ---
 // Cấu hình thủ công (Manual Config) cho dự án của bạn
 const manualFirebaseConfig = {
-  apiKey: "AIzaSyCbVeC8hWMHTSxkfqqutBRsAaGGDsyVzfY",
+  apiKey: "AIzaSyBeQemubnB8jBWLiPZob5HiDC4yubuxupI",
   authDomain: "learn-d8e71.firebaseapp.com",
   projectId: "learn-d8e71",
   storageBucket: "learn-d8e71.firebasestorage.app",
