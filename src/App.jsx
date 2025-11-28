@@ -118,8 +118,8 @@ const getWordDiff = (userText, targetText) => {
 };
 
 // --- API HANDLING ---
-// API Key
-const apiKey = "AIzaSyBIYyMINkrYxCDKCyza9G6knlXLoqh1aXw";
+// API Key (Protected with HTTP referrer restrictions)
+const apiKey = "AIzaSyDqDfB3lsg11GFoIarvbL_B7H1EKkm4aKo";
 
 const generateLessonContent = async (topic, lengthOption) => {
   let lengthPrompt = "";
