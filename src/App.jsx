@@ -181,28 +181,33 @@ const generateLessonContent = async (topic, lengthOption) => {
   }
 };
 
-const checkSemanticMatch = async (userAnswer, originalVietnamese) => {
+const checkSemanticMatch = async (userAnswer, originalVietnamese, correctAnswers) => {
     const prompt = `
-        You are a translation judge focusing on MEANING ACCURACY.
+        You are a strict translation judge for English learners.
         
-        Vietnamese: "${originalVietnamese}"
-        User's English: "${userAnswer}"
+        Vietnamese original: "${originalVietnamese}"
+        User's English translation: "${userAnswer}"
+        Correct answers: ${correctAnswers.join(' OR ')}
         
-        Rules:
-        1. IGNORE small spelling mistakes (ned→need, teh→the, photografers→photographers)
-        2. IGNORE minor grammar errors if meaning is clear
-        3. ACCEPT synonyms and different word choices
-        4. FOCUS: Is the CORE MEANING correct?
+        STRICT RULES:
+        1. Check spelling FIRST - if there are obvious typos (like "daiy" instead of "daily"), mark as INCORRECT
+        2. Only accept minor typos like: "teh"→"the" (adjacent keys), "recieve"→"receive" (common mistakes)
+        3. Do NOT accept: completely wrong letters, missing letters that change meaning
+        4. Check grammar - subject-verb agreement, tense, articles
+        5. Check meaning accuracy - must convey the SAME meaning as Vietnamese
         
-        If CORRECT (even with typos):
-        - Set isCorrect: true
-        - In feedback, mention spelling errors: "Lỗi chính tả: 'ned'→'need', 'photografers'→'photographers'"
+        Scoring logic:
+        - If spelling errors are obvious/multiple: isCorrect = false
+        - If meaning is wrong: isCorrect = false
+        - If grammar is severely wrong: isCorrect = false
+        - Only mark as correct if both meaning AND form are acceptable
         
-        If WRONG meaning:
-        - Set isCorrect: false
-        - Explain WHY in Vietnamese (wrong word choice, missing info, etc.)
+        In feedback (Vietnamese):
+        - List ALL errors specifically: "Lỗi chính tả: 'daiy' phải là 'daily', 'toughts' phải là 'thoughts'"
+        - Mention grammar errors if any
+        - Explain meaning differences if wrong
         
-        Return JSON ONLY: { "isCorrect": boolean, "feedback": "Vietnamese explanation" }
+        Return JSON ONLY: { "isCorrect": boolean, "feedback": "detailed Vietnamese explanation" }
     `;
     try {
         const response = await fetch(
@@ -541,12 +546,12 @@ export default function App() {
     if (!userInput.trim()) return;
     const currentSent = currentCourse.sentences[currentSentIndex];
     
-    // Bước 1: Kiểm tra semantic trước (ưu tiên nghĩa)
+    // Bước 1: Kiểm tra semantic với AI (kiểm tra nghĩa + chính tả)
     setFeedbackState("checking");
     const vnContext = currentSent.segments.map(s => s.text).join("");
-    const semanticResult = await checkSemanticMatch(userInput, vnContext);
+    const semanticResult = await checkSemanticMatch(userInput, vnContext, currentSent.acceptableAnswers);
 
-    // Bước 2: Tìm đáp án gần nhất để so sánh chi tiết
+    // Bước 2: Tìm đáp án gần nhất để hiển thị diff
     let bestMatch = null;
     let minDiffScore = Infinity;
     let bestDiff = null;
@@ -567,9 +572,9 @@ export default function App() {
       }
     });
 
-    // Bước 3: Quyết định kết quả dựa trên semantic (ưu tiên cao hơn)
+    // Bước 3: Quyết định kết quả dựa trên AI (kiểm tra chặt chẽ cả nghĩa lẫn chính tả)
     if (semanticResult.isCorrect) {
-        // ĐÚNG NGHĨA → Chấp nhận
+        // ĐÚNG → Chấp nhận
         setFeedbackState("correct");
         const newCompleted = [...completedSentences];
         newCompleted[currentSentIndex] = true;
@@ -577,20 +582,20 @@ export default function App() {
         setDetailedFeedback(bestDiff);
         setMatchedAnswer(bestMatch);
         
-        // Nếu có lỗi chính tả nhỏ (minDiffScore > 0 nhưng < 3), gợi ý
-        if (minDiffScore > 0 && minDiffScore <= 2) {
-            setAiFeedbackMsg("Đúng nghĩa! Tuy nhiên có vài lỗi chính tả nhỏ: " + (typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Hãy xem đáp án mẫu bên dưới."));
+        // Hiển thị feedback nếu có
+        if (semanticResult.feedback && semanticResult.feedback.trim()) {
+            setAiFeedbackMsg(semanticResult.feedback);
         } else if (minDiffScore === 0) {
             setAiFeedbackMsg("Chính xác tuyệt đối!");
         } else {
-            setAiFeedbackMsg("Cách diễn đạt khác nhưng hoàn toàn chính xác về nghĩa!");
+            setAiFeedbackMsg("Chính xác!");
         }
     } else {
-        // SAI NGHĨA → Từ chối
+        // SAI → Từ chối (có thể do nghĩa sai hoặc lỗi chính tả nghiêm trọng)
         setFeedbackState("incorrect");
         setDetailedFeedback(bestDiff);
         setMatchedAnswer(null);
-        setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa đúng nghĩa.");
+        setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa chính xác.");
         statsRef.current.mistakes += 1;
         // Lưu lỗi chi tiết
         const newErrors = [...sentenceErrors];
@@ -598,7 +603,7 @@ export default function App() {
         newErrors[currentSentIndex].push({
           userAnswer: userInput,
           correctAnswer: bestMatch,
-          feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.",
+          feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Chưa chính xác.",
           timestamp: new Date().toISOString()
         });
         setSentenceErrors(newErrors);
@@ -750,9 +755,9 @@ export default function App() {
                 )}
 
                 {authMode !== 'forgot' && (
-                    <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-lg p-1 mb-6`}>
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')}`}>Đăng ký</button>
+                    <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'} rounded-lg p-1 mb-6`}>
+                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-500 hover:text-indigo-700')}`}>Đăng nhập</button>
+                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-500 hover:text-indigo-700')}`}>Đăng ký</button>
                     </div>
                 )}
 
@@ -761,7 +766,7 @@ export default function App() {
                         <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email đăng ký</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
                         {resetEmailSent ? (<div className="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Đã gửi link khôi phục!</div>) : (authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>)}
                         <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2`}><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
-                        <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} text-sm underline mt-2`}>Quay lại Đăng nhập</button>
+                        <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'} text-sm underline mt-2 font-semibold`}>Quay lại Đăng nhập</button>
                     </form>
                 ) : (
                     <form onSubmit={authMode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4 animate-in fade-in">
@@ -777,7 +782,7 @@ export default function App() {
                 {authMode !== 'forgot' && (
                     <div className="mt-6 flex flex-col gap-3 animate-in fade-in">
                         <button onClick={handleGoogleLogin} className="w-full bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"><span className="text-lg font-bold">G</span> Tiếp tục với Google</button>
-                        <button onClick={handleGuestLogin} className={`${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-slate-600 hover:text-slate-900'} text-sm underline`}>Dùng thử không cần tài khoản</button>
+                        <button onClick={handleGuestLogin} className={`${isDarkMode ? 'text-slate-500 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'} text-sm underline font-semibold`}>Dùng thử không cần tài khoản</button>
                     </div>
                 )}
             </div>
@@ -869,19 +874,22 @@ export default function App() {
                                         const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
                                         const errorDetails = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
                                         const errorCount = errorDetails && Array.isArray(errorDetails) ? errorDetails.length : (errorDetails ? 1 : 0);
+                                        const hasAttempted = isCompleted || errorCount > 0;
+                                        const finalStatus = isCompleted ? 'correct' : (hasAttempted ? 'incorrect' : 'skipped');
+                                        
                                         return (
-                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${isCompleted ? 'border-green-500/50' : 'border-red-500/50'}`}>
+                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${finalStatus === 'correct' ? 'border-green-500/50' : finalStatus === 'incorrect' ? 'border-red-500/50' : 'border-gray-500/50'}`}>
                                                 <div className="flex gap-3">
-                                                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                                                        {isCompleted ? '✓' : '✗'}
+                                                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${finalStatus === 'correct' ? 'bg-green-500 text-white' : finalStatus === 'incorrect' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
+                                                        {finalStatus === 'correct' ? '✓' : finalStatus === 'incorrect' ? '✗' : '−'}
                                                     </span>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                             <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
-                                                                {isCompleted ? 'Đúng' : 'Sai'}
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${finalStatus === 'correct' ? 'bg-green-500/20 text-green-500' : finalStatus === 'incorrect' ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/20 text-gray-500'}`}>
+                                                                {finalStatus === 'correct' ? 'Đúng' : finalStatus === 'incorrect' ? 'Sai' : 'Chưa làm'}
                                                             </span>
-                                                            {!isCompleted && errorCount > 0 && (
+                                                            {errorCount > 0 && (
                                                                 <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">
                                                                     {errorCount} lần sai
                                                                 </span>
@@ -892,7 +900,7 @@ export default function App() {
                                                             <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
                                                             <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
                                                         </div>
-                                                        {!isCompleted && errorDetails && (
+                                                        {errorDetails && errorCount > 0 && (
                                                             <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
                                                                 {Array.isArray(errorDetails) && errorDetails.length > 0 ? (
                                                                     <div className="space-y-3">
@@ -918,9 +926,12 @@ export default function App() {
                                                                             </>
                                                                         )}
                                                                     </>
-                                                                ) : (
-                                                                    <p className={`text-xs italic ${theme.secondaryText}`}>Bài học cũ - chưa có dữ liệu chi tiết lỗi. Làm bài mới để xem phân tích lỗi!</p>
-                                                                )}
+                                                                ) : null}
+                                                            </div>
+                                                        )}
+                                                        {finalStatus === 'skipped' && (
+                                                            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100'} p-3 rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
+                                                                <p className={`text-xs italic ${theme.secondaryText}`}>Câu này chưa được làm (bỏ qua)</p>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1099,12 +1110,12 @@ export default function App() {
                 </div>
             </div>
             <div className="absolute top-4 right-4 flex items-center gap-2">
-                <button onClick={() => setAppState("history")} className={`p-2.5 rounded-full ${theme.cardBg} ${theme.secondaryText} hover:${theme.text} border ${theme.cardBorder}`} title="Lịch sử">
+                <button onClick={() => setAppState("history")} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' ' + theme.secondaryText + ' hover:' + theme.text : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600'} border ${isDarkMode ? theme.cardBorder : 'border-indigo-200'}`} title="Lịch sử">
                     <History className="w-5 h-5" />
                 </button>
                 <button onClick={toggleTheme} className={`p-2.5 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
-                <button onClick={handleLogout} className={`p-2.5 rounded-full ${theme.cardBg} text-red-500 hover:bg-red-500/10 border ${theme.cardBorder}`} title="Đăng xuất">
+                <button onClick={handleLogout} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-red-500 hover:bg-red-500/10' : 'bg-gradient-to-br from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-600'} border ${isDarkMode ? theme.cardBorder : 'border-rose-200'}`} title="Đăng xuất">
                     <LogOut className="w-5 h-5" />
                 </button>
             </div>
@@ -1122,7 +1133,7 @@ export default function App() {
             <div className={`${theme.cardBg} p-5 rounded-3xl shadow-2xl border ${theme.cardBorder} w-full transition-all`}>
                 <div className="flex justify-center gap-2 mb-5">
                     {[{ id: 'short', label: 'Ngắn' }, { id: 'medium', label: 'Vừa' }, { id: 'long', label: 'Dài' }].map((opt) => (
-                        <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all ${lengthOption === opt.id ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent') : `${theme.bg} ${theme.secondaryText} ${isDarkMode ? 'border-slate-700 hover:border-indigo-500' : 'border-slate-300 hover:border-indigo-400'}`}`}>{opt.label}</button>
+                        <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all ${lengthOption === opt.id ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent') : (isDarkMode ? `${theme.bg} ${theme.secondaryText} border-slate-700 hover:border-indigo-500` : 'bg-gradient-to-br from-slate-50 to-gray-50 text-slate-700 border-slate-300 hover:border-indigo-400 hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600')}`}>{opt.label}</button>
                     ))}
                 </div>
                 <form onSubmit={handleStartGeneration} className="relative flex items-center">
@@ -1145,7 +1156,7 @@ export default function App() {
         <>
         <header className="w-full mb-4 flex items-center justify-between px-1 lg:px-4">
             <div className="flex items-center gap-4">
-                <button onClick={() => setAppState("home")} className={`p-2 hover:${theme.cardBg} rounded-full transition-all ${theme.secondaryText}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
+                <button onClick={() => setAppState("home")} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
                 <div>
                     <h1 className={`text-xl font-bold ${theme.text} flex items-center gap-3`}>{currentCourse.title}</h1>
                     <span className="text-xs font-bold bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-full uppercase border border-indigo-500/20">{currentCourse.type}</span>
@@ -1197,7 +1208,7 @@ export default function App() {
                         </div>
                         {feedbackState !== 'idle' && feedbackState !== 'checking' && (
                             <div className="flex gap-4 flex-row-reverse animate-in slide-in-from-right-4">
-                                <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-300'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className="w-6 h-6 rounded-full bg-slate-500"></div></div>
+                                <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-br from-indigo-100 to-purple-100'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className={`w-6 h-6 rounded-full ${isDarkMode ? 'bg-slate-500' : 'bg-gradient-to-br from-indigo-400 to-purple-500'}`}></div></div>
                                 <div className={`p-5 rounded-3xl rounded-tr-none shadow-lg max-w-[85%] text-lg relative overflow-visible z-10 font-medium border-2 ${isDarkMode ? (feedbackState === 'correct' ? 'bg-slate-800 text-white border-green-500' : 'bg-slate-800 text-white border-red-500') : (feedbackState === 'correct' ? 'bg-white text-slate-900 border-green-500' : 'bg-white text-slate-900 border-red-500')}`}>
                                     {renderUserDiff()}
                                 </div>
@@ -1249,12 +1260,12 @@ export default function App() {
                             <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
                         ) : (
                             <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
-                                <button onClick={() => setShowHint(false)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-600 dark:text-amber-400 transition-colors" title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
+                                <button onClick={() => setShowHint(false)} className={`absolute top-3 right-3 p-1.5 rounded-full transition-colors ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-amber-400' : 'bg-amber-200/50 hover:bg-amber-300/70 text-amber-700'}`} title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
                                 <div className="space-y-4">
                                     <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
                                     {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
                                     <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
-                                    {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${theme.secondaryText} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
+                                    {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
                                 </div>
                             </div>
                         )}
