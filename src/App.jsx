@@ -507,7 +507,13 @@ export default function App() {
           level: lengthOption,
           courseData: currentCourse,
           completedStatus: completedSentences,
-          sentenceErrors: sentenceErrors
+          // Chuyển đổi nested arrays thành object với key là index
+          sentenceErrors: sentenceErrors.reduce((acc, errors, idx) => {
+              if (errors && errors.length > 0) {
+                  acc[idx] = errors;
+              }
+              return acc;
+          }, {})
       };
       
       console.log('💾 Saving history doc:', {
@@ -754,7 +760,7 @@ export default function App() {
                     <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in">
                         <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email đăng ký</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
                         {resetEmailSent ? (<div className="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Đã gửi link khôi phục!</div>) : (authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>)}
-                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
+                        <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2`}><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
                         <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'} text-sm underline mt-2`}>Quay lại Đăng nhập</button>
                     </form>
                 ) : (
@@ -764,7 +770,7 @@ export default function App() {
                         <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Mật khẩu</label><div className="relative"><Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
                         {authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
                         {authMode === 'login' && (<div className="text-right"><button type="button" onClick={() => { setAuthMode('forgot'); setAuthError(""); }} className="text-xs text-indigo-400 hover:text-indigo-300 font-bold">Quên mật khẩu?</button></div>)}
-                        <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95">{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</button>
+                        <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95`}>{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</button>
                     </form>
                 )}
 
@@ -1116,7 +1122,7 @@ export default function App() {
             <div className={`${theme.cardBg} p-5 rounded-3xl shadow-2xl border ${theme.cardBorder} w-full transition-all`}>
                 <div className="flex justify-center gap-2 mb-5">
                     {[{ id: 'short', label: 'Ngắn' }, { id: 'medium', label: 'Vừa' }, { id: 'long', label: 'Dài' }].map((opt) => (
-                        <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all ${lengthOption === opt.id ? 'bg-indigo-600 text-white border-indigo-600' : `${theme.bg} ${theme.secondaryText} border-transparent hover:border-indigo-500`}`}>{opt.label}</button>
+                        <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all ${lengthOption === opt.id ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent') : `${theme.bg} ${theme.secondaryText} ${isDarkMode ? 'border-slate-700 hover:border-indigo-500' : 'border-slate-300 hover:border-indigo-400'}`}`}>{opt.label}</button>
                     ))}
                 </div>
                 <form onSubmit={handleStartGeneration} className="relative flex items-center">
@@ -1128,7 +1134,7 @@ export default function App() {
 
             <div className={`flex flex-wrap justify-center gap-2 text-sm ${theme.secondaryText} mt-6`}>
                 {suggestedTopics.map((tag) => (
-                    <button key={tag} onClick={() => setTopicInput(tag)} className={`${theme.cardBg} border-2 ${isDarkMode ? 'border-slate-700 hover:border-indigo-500' : 'border-slate-300 hover:border-indigo-400'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
+                    <button key={tag} onClick={() => setTopicInput(tag)} className={`${isDarkMode ? theme.cardBg + ' border-2 border-slate-700 hover:border-indigo-500' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-purple-100'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-700'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
                 ))}
                 <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full hover:bg-indigo-500/10 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}><RefreshCw className="w-4 h-4" /></button>
             </div>
@@ -1146,7 +1152,7 @@ export default function App() {
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
+                <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
                 <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} shadow-sm border ${theme.cardBorder}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
                 <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
                     <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
@@ -1155,8 +1161,8 @@ export default function App() {
         </header>
 
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
-            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto custom-scrollbar`}>
-                <div className={`text-base md:text-lg leading-[2.5] ${theme.text} font-sans relative`} style={{zIndex: 1}}>
+            <div className={`lg:col-span-8 ${theme.cardBg} p-6 pt-16 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto custom-scrollbar`}>
+                <div className={`text-base md:text-lg leading-[3] ${theme.text} font-sans relative`} style={{zIndex: 1}}>
                     {currentCourse.sentences.map((sent, sIdx) => {
                         const isCompleted = completedSentences[sIdx];
                         const isActive = sIdx === currentSentIndex;
@@ -1240,7 +1246,7 @@ export default function App() {
                 {feedbackState !== 'correct' && (
                     <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
                         {!showHint ? (
-                            <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
+                            <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
                         ) : (
                             <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
                                 <button onClick={() => setShowHint(false)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-600 dark:text-amber-400 transition-colors" title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
