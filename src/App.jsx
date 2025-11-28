@@ -457,7 +457,7 @@ export default function App() {
       setCurrentCourse(lessonData);
       setCurrentSentIndex(0);
       setCompletedSentences(new Array(lessonData.sentences.length).fill(false));
-      setSentenceErrors(new Array(lessonData.sentences.length).fill([])); // Khởi tạo array of arrays
+      setSentenceErrors(Array.from({ length: lessonData.sentences.length }, () => [])); // Khởi tạo array of arrays - mỗi phần tử là mảng riêng biệt
       setUserInput("");
       setFeedbackState("idle");
       setDetailedFeedback(null);
@@ -735,7 +735,7 @@ export default function App() {
       return (
         <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4 ${theme.text} font-sans`}>
             <FontStyles />
-            <button onClick={toggleTheme} className={`absolute top-4 right-4 p-2.5 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
+            <button onClick={toggleTheme} className={`absolute top-4 right-4 p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
                 {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
             </button>
             <div className={`max-w-md w-full ${theme.cardBg} p-8 rounded-3xl shadow-2xl border ${theme.cardBorder}`}>
@@ -801,7 +801,7 @@ export default function App() {
                     <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
                     {user && <p className="text-xs text-indigo-500 font-medium mt-1">{historyData.length} bài học</p>}
                 </div>
-                <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
+                <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                 </button>
             </header>
@@ -1113,7 +1113,7 @@ export default function App() {
                 <button onClick={() => setAppState("history")} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' ' + theme.secondaryText + ' hover:' + theme.text : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600'} border ${isDarkMode ? theme.cardBorder : 'border-indigo-200'}`} title="Lịch sử">
                     <History className="w-5 h-5" />
                 </button>
-                <button onClick={toggleTheme} className={`p-2.5 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
+                <button onClick={toggleTheme} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
                 <button onClick={handleLogout} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-red-500 hover:bg-red-500/10' : 'bg-gradient-to-br from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-600'} border ${isDarkMode ? theme.cardBorder : 'border-rose-200'}`} title="Đăng xuất">
                     <LogOut className="w-5 h-5" />
@@ -1147,7 +1147,7 @@ export default function App() {
                 {suggestedTopics.map((tag) => (
                     <button key={tag} onClick={() => setTopicInput(tag)} className={`${isDarkMode ? theme.cardBg + ' border-2 border-slate-700 hover:border-indigo-500' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-purple-100'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-700'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
                 ))}
-                <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full hover:bg-indigo-500/10 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-indigo-500/10 text-indigo-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><RefreshCw className="w-4 h-4" /></button>
             </div>
         </div>
       )}
@@ -1164,7 +1164,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-3">
                 <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
-                <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} shadow-sm border ${theme.cardBorder}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
+                <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 shadow-sm border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 shadow-sm border border-orange-200'}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
                 <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
                     <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
                 </div>
