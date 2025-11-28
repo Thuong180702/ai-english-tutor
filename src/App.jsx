@@ -121,6 +121,46 @@ const getWordDiff = (userText, targetText) => {
 // API Key
 const apiKey = "AIzaSyBIYyMINkrYxCDKCyza9G6knlXLoqh1aXw";
 
+// API Health Check function
+const checkApiHealth = async () => {
+  const testPrompt = "Say 'API is working' in one sentence.";
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: testPrompt }] }]
+        })
+      }
+    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      return { 
+        status: 'error', 
+        message: `Lỗi API: ${response.status}`,
+        details: errorText
+      };
+    }
+    const data = await response.json();
+    if (data.candidates && data.candidates[0]?.content?.parts?.[0]?.text) {
+      return { 
+        status: 'success', 
+        message: 'API hoạt động bình thường!',
+        response: data.candidates[0].content.parts[0].text
+      };
+    }
+    return { status: 'error', message: 'Phản hồi API không hợp lệ' };
+  } catch (error) {
+    return { 
+      status: 'error', 
+      message: 'Không thể kết nối đến API',
+      details: error.message
+    };
+  }
+};
+
 const generateLessonContent = async (topic, lengthOption) => {
   let lengthPrompt = "";
   switch (lengthOption) {
@@ -261,6 +301,7 @@ export default function App() {
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemId: null });
+  const [apiHealthStatus, setApiHealthStatus] = useState({ checking: false, result: null });
 
   const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
   const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
@@ -586,6 +627,12 @@ export default function App() {
   };
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  const handleCheckApiHealth = async () => {
+    setApiHealthStatus({ checking: true, result: null });
+    const result = await checkApiHealth();
+    setApiHealthStatus({ checking: false, result });
+  };
 
   const handleReturnHome = () => {
     setAppState("home");
@@ -977,6 +1024,49 @@ export default function App() {
                     <button key={tag} onClick={() => setTopicInput(tag)} className={`${theme.cardBg} border ${theme.cardBorder} px-4 py-2 rounded-full hover:border-indigo-500 hover:text-indigo-500 transition-all shadow-sm`}>{tag}</button>
                 ))}
                 <button onClick={() => setSuggestedTopics(getRandomTopics())} className="p-2 rounded-full hover:bg-indigo-500/10 text-indigo-500"><RefreshCw className="w-4 h-4" /></button>
+            </div>
+
+            {/* API Health Check Section */}
+            <div className="mt-8 w-full">
+                <button 
+                    onClick={handleCheckApiHealth} 
+                    disabled={apiHealthStatus.checking}
+                    className={`w-full ${theme.cardBg} border ${theme.cardBorder} px-4 py-3 rounded-xl hover:border-indigo-500 transition-all shadow-sm flex items-center justify-center gap-2 ${apiHealthStatus.checking ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    {apiHealthStatus.checking ? (
+                        <><Loader2 className="w-5 h-5 animate-spin text-indigo-500" /> <span className={theme.secondaryText}>Đang kiểm tra API...</span></>
+                    ) : (
+                        <><AlertCircle className="w-5 h-5 text-indigo-500" /> <span className={theme.secondaryText}>Kiểm tra kết nối API</span></>
+                    )}
+                </button>
+                
+                {apiHealthStatus.result && (
+                    <div className={`mt-3 p-4 rounded-xl border animate-in fade-in slide-in-from-top-2 ${
+                        apiHealthStatus.result.status === 'success' 
+                            ? `${theme.successBg} border-green-500/30` 
+                            : `${theme.errorBg} border-red-500/30`
+                    }`}>
+                        <div className="flex items-center gap-2 mb-2">
+                            {apiHealthStatus.result.status === 'success' 
+                                ? <CheckCircle className="w-5 h-5 text-green-500" />
+                                : <XCircle className="w-5 h-5 text-red-500" />
+                            }
+                            <span className={`font-bold ${apiHealthStatus.result.status === 'success' ? theme.successText : theme.errorText}`}>
+                                {apiHealthStatus.result.message}
+                            </span>
+                        </div>
+                        {apiHealthStatus.result.response && (
+                            <p className={`text-sm ${theme.secondaryText} italic`}>
+                                Phản hồi: "{apiHealthStatus.result.response}"
+                            </p>
+                        )}
+                        {apiHealthStatus.result.details && apiHealthStatus.result.status === 'error' && (
+                            <p className={`text-xs ${theme.secondaryText} mt-1`}>
+                                Chi tiết: {apiHealthStatus.result.details}
+                            </p>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
       )}
