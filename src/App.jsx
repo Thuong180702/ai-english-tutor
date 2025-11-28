@@ -257,6 +257,7 @@ export default function App() {
   const [showHint, setShowHint] = useState(false);
   const [showFullAnswer, setShowFullAnswer] = useState(false);
   const [completedSentences, setCompletedSentences] = useState([]);
+  const [sentenceErrors, setSentenceErrors] = useState([]); // Lưu lỗi chi tiết mỗi câu
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
@@ -423,6 +424,7 @@ export default function App() {
       setCurrentCourse(lessonData);
       setCurrentSentIndex(0);
       setCompletedSentences(new Array(lessonData.sentences.length).fill(false));
+      setSentenceErrors(new Array(lessonData.sentences.length).fill(null)); // Khởi tạo mảng lỗi
       setUserInput("");
       setFeedbackState("idle");
       setDetailedFeedback(null);
@@ -467,7 +469,8 @@ export default function App() {
               fullAnswers: statsRef.current.fullAnswers,
               level: lengthOption,
               courseData: currentCourse,
-              completedStatus: completedSentences
+              completedStatus: completedSentences,
+              sentenceErrors: sentenceErrors // Lưu chi tiết lỗi
           });
       } catch (e) {
           console.error("Error saving history:", e);
@@ -526,6 +529,14 @@ export default function App() {
           setMatchedAnswer(null);
           setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.");
           statsRef.current.mistakes += 1;
+          // Lưu lỗi chi tiết
+          const newErrors = [...sentenceErrors];
+          newErrors[currentSentIndex] = {
+            userAnswer: userInput,
+            correctAnswer: bestMatch,
+            feedback: aiFeedbackMsg || semanticResult.feedback
+          };
+          setSentenceErrors(newErrors);
       }
     }
   };
@@ -773,26 +784,42 @@ export default function App() {
                             <h2 className="text-xl font-bold text-white truncate pr-4">{selectedHistoryItem.topic}</h2>
                             <button onClick={() => setSelectedHistoryItem(null)} className="text-white/80 hover:text-white"><X className="w-6 h-6" /></button>
                         </div>
-                        <div className={`flex-1 overflow-y-auto p-6 ${theme.bg}`}>
+                        <div className={`flex-1 overflow-y-auto p-6 ${theme.bg} custom-scrollbar`}>
                             {selectedHistoryItem.courseData && selectedHistoryItem.courseData.sentences ? (
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {selectedHistoryItem.courseData.sentences.map((sent, idx) => {
                                         const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
+                                        const errorDetail = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
                                         return (
-                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border ${isCompleted ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
-                                                <div className="flex gap-3 mb-2">
-                                                    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${isCompleted ? 'border-green-500/50' : 'border-red-500/50'}`}>
+                                                <div className="flex gap-3">
+                                                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${isCompleted ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
                                                         {isCompleted ? '✓' : '✗'}
                                                     </span>
                                                     <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
+                                                        <div className="flex items-center gap-2 mb-2">
                                                             <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
-                                                                {isCompleted ? 'Đúng' : 'Sai/Bỏ qua'}
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                                                {isCompleted ? 'Đúng' : 'Sai'}
                                                             </span>
                                                         </div>
-                                                        <p className={`font-medium ${theme.text} mb-2`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
-                                                        <p className={`text-sm italic ${isCompleted ? 'text-green-500' : theme.secondaryText}`}>{sent.acceptableAnswers[0]}</p>
+                                                        <p className={`font-medium ${theme.text} mb-2 text-base`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
+                                                        <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'} p-3 rounded-lg mb-2`}>
+                                                            <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
+                                                            <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
+                                                        </div>
+                                                        {!isCompleted && errorDetail && (
+                                                            <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
+                                                                <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
+                                                                <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2`}>{errorDetail.userAnswer || "Không trả lời"}</p>
+                                                                {errorDetail.feedback && (
+                                                                    <>
+                                                                        <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
+                                                                        <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetail.feedback}</p>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -801,13 +828,13 @@ export default function App() {
                                 </div>
                             ) : (<p className={`${theme.secondaryText} text-center py-10`}>Chi tiết bài học không khả dụng cho mục này.</p>)}
                         </div>
-                        <div className={`p-4 border-t ${theme.cardBorder} ${theme.cardBg} flex justify-between items-center text-sm ${theme.secondaryText}`}>
+                        <div className={`p-4 border-t ${theme.cardBorder} ${theme.cardBg} flex justify-between items-center text-sm`}>
                             <div className="flex gap-4">
-                                <span>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
-                                <span className="text-green-500">✓ {selectedHistoryItem.completedCorrectly || 0}</span>
-                                <span className="text-red-500">✗ {selectedHistoryItem.failedSentences || 0}</span>
+                                <span className={theme.text}>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
+                                <span className="text-green-500 font-bold">✓ {selectedHistoryItem.completedCorrectly || 0}</span>
+                                <span className="text-red-500 font-bold">✗ {selectedHistoryItem.failedSentences || 0}</span>
                             </div>
-                            <span>Tổng: {selectedHistoryItem.totalSentences} câu</span>
+                            <span className={theme.secondaryText}>Tổng: {selectedHistoryItem.totalSentences} câu</span>
                         </div>
                     </div>
                 </div>
@@ -1058,9 +1085,9 @@ export default function App() {
                         </div>
                         {feedbackState !== 'idle' && feedbackState !== 'checking' && (
                             <div className="flex gap-4 flex-row-reverse animate-in slide-in-from-right-4">
-                                <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className="w-6 h-6 rounded-full bg-slate-400"></div></div>
-                                <div className={`p-4 rounded-3xl rounded-tr-none shadow-md max-w-[85%] text-lg relative overflow-visible z-10 ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900'} ${feedbackState === 'correct' ? 'border-2 border-green-500' : 'border-2 border-red-500'}`}>
-                                    <div className="relative z-10 font-medium">{renderUserDiff()}</div>
+                                <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-300'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className="w-6 h-6 rounded-full bg-slate-500"></div></div>
+                                <div className={`p-5 rounded-3xl rounded-tr-none shadow-lg max-w-[85%] text-lg relative overflow-visible z-10 font-medium border-2 ${isDarkMode ? (feedbackState === 'correct' ? 'bg-slate-800 text-white border-green-500' : 'bg-slate-800 text-white border-red-500') : (feedbackState === 'correct' ? 'bg-white text-slate-900 border-green-500' : 'bg-white text-slate-900 border-red-500')}`}>
+                                    {renderUserDiff()}
                                 </div>
                             </div>
                         )}
