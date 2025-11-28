@@ -262,6 +262,7 @@ export default function App() {
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemId: null });
+  const [isSavingHistory, setIsSavingHistory] = useState(false);
 
   const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
   const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
@@ -299,7 +300,6 @@ export default function App() {
   // Fetch History
   useEffect(() => {
       if (user && appState === 'history') {
-          console.log('Fetching history for user:', user.uid);
           const q = query(
               collection(db, 'artifacts', appId, 'users', user.uid, 'history'),
               orderBy('timestamp', 'desc'),
@@ -307,14 +307,11 @@ export default function App() {
           );
           const unsubscribe = onSnapshot(q, (snapshot) => {
               const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              console.log('History data received:', data.length, 'items');
               setHistoryData(data);
           }, (error) => {
               console.error('Error fetching history:', error);
           });
           return () => unsubscribe();
-      } else {
-          console.log('Not fetching history - user:', !!user, 'appState:', appState);
       }
   }, [user, appState]);
 
@@ -459,14 +456,14 @@ export default function App() {
 
   const handleSaveResult = async () => {
       if (!user || !currentCourse) {
-          console.log('Cannot save - user:', !!user, 'currentCourse:', !!currentCourse);
+          console.warn('Cannot save history - User:', user?.uid || 'none', 'Course:', !!currentCourse);
           return;
       }
+      setIsSavingHistory(true);
       const finalScore = calculateScore();
       const successfullyCompleted = completedSentences.filter(Boolean).length;
       const failed = completedSentences.length - successfullyCompleted;
       try {
-          console.log('Saving history to Firebase...');
           const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
               topic: currentCourse.title,
               score: finalScore,
@@ -480,11 +477,13 @@ export default function App() {
               level: lengthOption,
               courseData: currentCourse,
               completedStatus: completedSentences,
-              sentenceErrors: sentenceErrors // Lưu chi tiết lỗi
+              sentenceErrors: sentenceErrors
           });
-          console.log('History saved successfully with ID:', docRef.id);
+          console.log('✅ History saved successfully:', docRef.id);
       } catch (e) {
-          console.error("Error saving history:", e);
+          console.error("❌ Error saving history:", e);
+      } finally {
+          setIsSavingHistory(false);
       }
   };
 
@@ -555,10 +554,11 @@ export default function App() {
   };
 
   const finishLesson = async () => {
-      // Lưu stats vào state trước khi render summary để tránh truy cập ref trong render
+      // Lưu lịch sử trước, đợi hoàn thành
+      await handleSaveResult();
+      // Sau đó mới chuyển sang màn hình summary
       setSummaryStats({ ...statsRef.current });
       setAppState("summary");
-      await handleSaveResult();
   };
 
   const handleNextSentence = () => {
@@ -754,7 +754,10 @@ export default function App() {
                         </button>
                     </div>
                 ) : historyData.length === 0 ? (
-                    <div className={`text-center py-20 ${theme.secondaryText}`}>Bạn chưa có bài học nào.</div>
+                    <div className={`text-center py-20 ${theme.secondaryText}`}>
+                        <p className="mb-2">Bạn chưa có bài học nào.</p>
+                        <p className="text-xs opacity-70">Hoàn thành một bài học để xem lịch sử tại đây</p>
+                    </div>
                 ) : (
                     historyData.map((item) => (
                         <div
@@ -948,6 +951,12 @@ export default function App() {
     return (
       <div className={`min-h-screen ${theme.bg} flex items-center justify-center p-4`}>
         <FontStyles />
+        {isSavingHistory && (
+          <div className="fixed top-4 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+            <span className="text-sm font-bold">Đang lưu lịch sử...</span>
+          </div>
+        )}
         <div className={`max-w-3xl w-full ${theme.cardBg} rounded-3xl shadow-2xl p-8 md:p-12 border ${theme.cardBorder}`}>
           <div className="text-center mb-8">
               <div className="relative w-40 h-40 mx-auto mb-6">
@@ -1070,9 +1079,9 @@ export default function App() {
 
             <div className={`flex flex-wrap justify-center gap-2 text-sm ${theme.secondaryText} mt-6`}>
                 {suggestedTopics.map((tag) => (
-                    <button key={tag} onClick={() => setTopicInput(tag)} className={`${theme.cardBg} border ${theme.cardBorder} px-4 py-2 rounded-full hover:border-indigo-500 hover:text-indigo-500 transition-all shadow-sm`}>{tag}</button>
+                    <button key={tag} onClick={() => setTopicInput(tag)} className={`${theme.cardBg} border-2 ${isDarkMode ? 'border-slate-700 hover:border-indigo-500' : 'border-slate-300 hover:border-indigo-400'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-600'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
                 ))}
-                <button onClick={() => setSuggestedTopics(getRandomTopics())} className="p-2 rounded-full hover:bg-indigo-500/10 text-indigo-500"><RefreshCw className="w-4 h-4" /></button>
+                <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full hover:bg-indigo-500/10 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}><RefreshCw className="w-4 h-4" /></button>
             </div>
         </div>
       )}
@@ -1088,7 +1097,7 @@ export default function App() {
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={handleFinishEarly} className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold transition-colors"><SkipForward className="w-4 h-4" /> Kết thúc</button>
+                <button onClick={handleFinishEarly} className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-xs font-bold transition-colors"><SkipForward className="w-4 h-4" /> Kết thúc</button>
                 <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} shadow-sm border ${theme.cardBorder}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
                 <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
                     <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
@@ -1097,7 +1106,7 @@ export default function App() {
         </header>
 
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
-            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl shadow-xl border ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
+            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
                 <div className={`text-base md:text-lg leading-[2.5] ${theme.text} font-sans`}>
                     {currentCourse.sentences.map((sent, sIdx) => {
                         const isCompleted = completedSentences[sIdx];
@@ -1111,7 +1120,7 @@ export default function App() {
                                 {sent.segments.map((seg, segIdx) => {
                                     const nextSeg = sent.segments[segIdx + 1];
                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none`} style={{zIndex: 9999}}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none`} style={{zIndex: 9999}}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
                                 })}
                             </span>
                         );
@@ -1120,7 +1129,7 @@ export default function App() {
             </div>
 
             <div className="lg:col-span-4 flex flex-col h-full gap-4 min-h-[500px]">
-                <div className={`flex-1 ${theme.cardBg} rounded-3xl shadow-xl border ${theme.cardBorder} flex flex-col overflow-hidden relative`}>
+                <div className={`flex-1 ${theme.cardBg} rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} flex flex-col overflow-hidden relative`}>
                     <div className={`flex-1 p-6 overflow-y-auto ${theme.bg} space-y-6 custom-scrollbar`}>
                         <div className="flex gap-4 animate-in slide-in-from-left-4">
                             <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0"><Brain className="w-6 h-6 text-indigo-600" /></div>
@@ -1184,12 +1193,12 @@ export default function App() {
                         {!showHint ? (
                             <button onClick={handleShowHint} className="w-full flex items-center justify-center gap-2 py-4 text-amber-500 hover:bg-amber-500/10 font-bold text-sm"><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
                         ) : (
-                            <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50/50'} animate-in fade-in relative`}>
+                            <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
                                 <button onClick={() => setShowHint(false)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-600 dark:text-amber-400 transition-colors" title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
                                 <div className="space-y-4">
-                                    <div><p className="text-xs font-bold text-amber-500 uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border ${isDarkMode ? 'border-amber-900/30' : 'border-amber-100'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
-                                    {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold text-amber-500 uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border ${isDarkMode ? 'border-amber-900/30' : 'border-amber-100'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold text-amber-500 uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border ${isDarkMode ? 'border-amber-900/30' : 'border-amber-100'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
-                                    <div><p className="text-xs font-bold text-amber-500 uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg text-amber-600 dark:text-amber-400 border ${isDarkMode ? 'border-amber-900' : 'border-amber-200'}`}>{v.word}: {v.meaning}</span>))}</div></div>
+                                    <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
+                                    {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
+                                    <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
                                     {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${theme.secondaryText} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
                                 </div>
                             </div>
