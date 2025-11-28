@@ -623,8 +623,8 @@ export default function App() {
     inputBg: isDarkMode ? "bg-slate-900" : "bg-slate-50",
     inputBorder: isDarkMode ? "border-slate-700" : "border-slate-200",
     inputText: isDarkMode ? "text-slate-200" : "text-slate-800",
-    highlightBg: isDarkMode ? "bg-indigo-900/30" : "bg-indigo-50",
-    highlightText: isDarkMode ? "text-indigo-300" : "text-indigo-900",
+    highlightBg: isDarkMode ? "bg-indigo-900/50" : "bg-indigo-100",
+    highlightText: isDarkMode ? "text-indigo-200" : "text-indigo-950",
     successBg: isDarkMode ? "bg-green-900/30" : "bg-green-50",
     successText: isDarkMode ? "text-green-300" : "text-green-700",
     errorBg: isDarkMode ? "bg-red-900/30" : "bg-red-50",
@@ -808,15 +808,21 @@ export default function App() {
                                                             <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
                                                             <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
                                                         </div>
-                                                        {!isCompleted && errorDetail && (
+                                                        {!isCompleted && (
                                                             <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
-                                                                <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
-                                                                <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2`}>{errorDetail.userAnswer || "Không trả lời"}</p>
-                                                                {errorDetail.feedback && (
+                                                                {errorDetail ? (
                                                                     <>
-                                                                        <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
-                                                                        <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetail.feedback}</p>
+                                                                        <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
+                                                                        <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2 font-medium`}>{errorDetail.userAnswer || "Không trả lời"}</p>
+                                                                        {errorDetail.feedback && (
+                                                                            <>
+                                                                                <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
+                                                                                <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetail.feedback}</p>
+                                                                            </>
+                                                                        )}
                                                                     </>
+                                                                ) : (
+                                                                    <p className={`text-xs italic ${theme.secondaryText}`}>Bài học cũ - chưa có dữ liệu chi tiết lỗi. Làm bài mới để xem phân tích lỗi!</p>
                                                                 )}
                                                             </div>
                                                         )}
@@ -1078,7 +1084,7 @@ export default function App() {
                             <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0"><Brain className="w-6 h-6 text-indigo-600" /></div>
                             <div className={`${theme.cardBg} p-5 rounded-3xl rounded-tl-none shadow-sm border ${theme.cardBorder} w-full`}>
                                 <p className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>Dịch câu này</p>
-                                <div className={`text-lg ${theme.highlightText} ${theme.highlightBg} p-3 rounded-xl border ${theme.cardBorder} italic font-medium`}>
+                                <div className={`text-lg p-4 rounded-xl border-2 italic font-bold ${isDarkMode ? 'bg-indigo-900/60 text-indigo-100 border-indigo-700' : 'bg-indigo-100 text-indigo-950 border-indigo-300'}`}>
                                     "{currentCourse.sentences[currentSentIndex].segments.map((s, i) => { const next = currentCourse.sentences[currentSentIndex].segments[i+1]; const space = next && !/^[.,!?;:)]/.test(next.text) ? ' ' : ''; return s.text + space; })}"
                                 </div>
                             </div>
