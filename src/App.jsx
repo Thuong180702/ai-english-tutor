@@ -452,16 +452,22 @@ export default function App() {
   const handleSaveResult = async () => {
       if (!user || !currentCourse) return;
       const finalScore = calculateScore();
+      const successfullyCompleted = completedSentences.filter(Boolean).length;
+      const failed = completedSentences.length - successfullyCompleted;
       try {
           await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
               topic: currentCourse.title,
               score: finalScore,
               totalSentences: currentCourse.sentences.length,
+              completedCorrectly: successfullyCompleted,
+              failedSentences: failed,
               timestamp: serverTimestamp(),
               mistakes: statsRef.current.mistakes,
               hints: statsRef.current.hints,
+              fullAnswers: statsRef.current.fullAnswers,
               level: lengthOption,
-              courseData: currentCourse 
+              courseData: currentCourse,
+              completedStatus: completedSentences
           });
       } catch (e) {
           console.error("Error saving history:", e);
@@ -770,23 +776,38 @@ export default function App() {
                         <div className={`flex-1 overflow-y-auto p-6 ${theme.bg}`}>
                             {selectedHistoryItem.courseData && selectedHistoryItem.courseData.sentences ? (
                                 <div className="space-y-6">
-                                    {selectedHistoryItem.courseData.sentences.map((sent, idx) => (
-                                        <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border ${theme.cardBorder}`}>
-                                            <div className="flex gap-3 mb-2">
-                                                <span className="flex-shrink-0 w-6 h-6 bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center text-xs font-bold">{idx + 1}</span>
-                                                <div>
-                                                    <p className={`font-medium ${theme.text} mb-1`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
-                                                    <p className="text-green-500 italic">{sent.acceptableAnswers[0]}</p>
+                                    {selectedHistoryItem.courseData.sentences.map((sent, idx) => {
+                                        const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
+                                        return (
+                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border ${isCompleted ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                                                <div className="flex gap-3 mb-2">
+                                                    <span className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                                        {isCompleted ? '✓' : '✗'}
+                                                    </span>
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
+                                                            <span className={`text-xs px-2 py-0.5 rounded-full ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                                                                {isCompleted ? 'Đúng' : 'Sai/Bỏ qua'}
+                                                            </span>
+                                                        </div>
+                                                        <p className={`font-medium ${theme.text} mb-2`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
+                                                        <p className={`text-sm italic ${isCompleted ? 'text-green-500' : theme.secondaryText}`}>{sent.acceptableAnswers[0]}</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             ) : (<p className={`${theme.secondaryText} text-center py-10`}>Chi tiết bài học không khả dụng cho mục này.</p>)}
                         </div>
                         <div className={`p-4 border-t ${theme.cardBorder} ${theme.cardBg} flex justify-between items-center text-sm ${theme.secondaryText}`}>
-                            <span>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
-                            <span>Hoàn thành: {selectedHistoryItem.totalSentences} câu</span>
+                            <div className="flex gap-4">
+                                <span>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
+                                <span className="text-green-500">✓ {selectedHistoryItem.completedCorrectly || 0}</span>
+                                <span className="text-red-500">✗ {selectedHistoryItem.failedSentences || 0}</span>
+                            </div>
+                            <span>Tổng: {selectedHistoryItem.totalSentences} câu</span>
                         </div>
                     </div>
                 </div>
@@ -1038,8 +1059,7 @@ export default function App() {
                         {feedbackState !== 'idle' && feedbackState !== 'checking' && (
                             <div className="flex gap-4 flex-row-reverse animate-in slide-in-from-right-4">
                                 <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className="w-6 h-6 rounded-full bg-slate-400"></div></div>
-                                <div className={`p-4 rounded-3xl rounded-tr-none shadow-md text-white max-w-[85%] text-lg ${feedbackState === 'correct' ? 'bg-slate-700' : 'bg-slate-700'} relative overflow-visible z-10`}>
-                                    <div className={`absolute inset-0 opacity-20 rounded-3xl rounded-tr-none ${feedbackState === 'correct' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                <div className={`p-4 rounded-3xl rounded-tr-none shadow-md max-w-[85%] text-lg relative overflow-visible z-10 ${isDarkMode ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-900'} ${feedbackState === 'correct' ? 'border-2 border-green-500' : 'border-2 border-red-500'}`}>
                                     <div className="relative z-10 font-medium">{renderUserDiff()}</div>
                                 </div>
                             </div>
