@@ -765,8 +765,8 @@ export default function App() {
 
                 {authMode !== 'forgot' && (
                     <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'} rounded-lg p-1 mb-6`}>
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : 'bg-white/30 text-indigo-600 hover:text-indigo-800 hover:bg-white/70')}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : 'bg-white/30 text-indigo-600 hover:text-indigo-800 hover:bg-white/70')}`}>Đăng ký</button>
+                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : 'bg-white text-indigo-600 hover:text-indigo-800')}`}>Đăng nhập</button>
+                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : 'bg-white text-indigo-600 hover:text-indigo-800')}`}>Đăng ký</button>
                     </div>
                 )}
 
