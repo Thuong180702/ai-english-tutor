@@ -220,8 +220,9 @@ const checkSemanticMatch = async (userAnswer, originalVietnamese, correctAnswers
         );
         const data = await response.json();
         return JSON.parse(data.candidates[0].content.parts[0].text);
-    } catch {
-        return { isCorrect: false, feedback: "Lỗi kết nối kiểm tra." };
+    } catch (error) {
+        console.error("API Error:", error);
+        return { isCorrect: null, feedback: "Lỗi kết nối API. Vui lòng thử lại.", apiError: true };
     }
 };
 
@@ -573,6 +574,14 @@ export default function App() {
     });
 
     // Bước 3: Quyết định kết quả dựa trên AI (kiểm tra chặt chẽ cả nghĩa lẫn chính tả)
+    if (semanticResult.apiError) {
+        // API LỖI → Cho phép thử lại, không tính là sai
+        setFeedbackState("idle");
+        setAiFeedbackMsg(semanticResult.feedback || "Lỗi kết nối API. Vui lòng thử lại.");
+        // Không tăng mistakes, không lưu lỗi
+        return;
+    }
+    
     if (semanticResult.isCorrect) {
         // ĐÚNG → Chấp nhận
         setFeedbackState("correct");
@@ -756,8 +765,8 @@ export default function App() {
 
                 {authMode !== 'forgot' && (
                     <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'} rounded-lg p-1 mb-6`}>
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-500 hover:text-indigo-700')}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-500 hover:text-indigo-700')}`}>Đăng ký</button>
+                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white') + ' shadow-md' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800 hover:bg-white/50')}`}>Đăng nhập</button>
+                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white') + ' shadow-md' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800 hover:bg-white/50')}`}>Đăng ký</button>
                     </div>
                 )}
 
