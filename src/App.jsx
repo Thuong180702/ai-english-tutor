@@ -50,6 +50,9 @@ const FontStyles = () => (
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
     .score-circle { transition: stroke-dashoffset 1s ease-in-out; transform: rotate(-90deg); transform-origin: 50% 50%; }
+    .tooltip-word { position: relative; z-index: 10; }
+    .tooltip-word:hover { z-index: 999999; }
+    .tooltip-content { z-index: 999999 !important; }
   `}</style>
 );
 
@@ -180,9 +183,26 @@ const generateLessonContent = async (topic, lengthOption) => {
 
 const checkSemanticMatch = async (userAnswer, originalVietnamese) => {
     const prompt = `
-        You are a translation judge. Original Vietnamese: "${originalVietnamese}". User's English: "${userAnswer}".
-        Task: Does the user's translation convey the CORRECT meaning? Ignore punctuation. Accept synonyms.
-        Return JSON ONLY: { "isCorrect": boolean, "feedback": "Short explanation in Vietnamese if wrong, or 'Diễn đạt tốt' if correct" }
+        You are a translation judge focusing on MEANING ACCURACY.
+        
+        Vietnamese: "${originalVietnamese}"
+        User's English: "${userAnswer}"
+        
+        Rules:
+        1. IGNORE small spelling mistakes (ned→need, teh→the, photografers→photographers)
+        2. IGNORE minor grammar errors if meaning is clear
+        3. ACCEPT synonyms and different word choices
+        4. FOCUS: Is the CORE MEANING correct?
+        
+        If CORRECT (even with typos):
+        - Set isCorrect: true
+        - In feedback, mention spelling errors: "Lỗi chính tả: 'ned'→'need', 'photografers'→'photographers'"
+        
+        If WRONG meaning:
+        - Set isCorrect: false
+        - Explain WHY in Vietnamese (wrong word choice, missing info, etc.)
+        
+        Return JSON ONLY: { "isCorrect": boolean, "feedback": "Vietnamese explanation" }
     `;
     try {
         const response = await fetch(
@@ -297,9 +317,10 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch History
+  // Fetch History - Fetch ngay khi có user, không chờ vào màn history
   useEffect(() => {
-      if (user && appState === 'history') {
+      if (user) {
+          console.log('📚 Setting up history listener for user:', user.uid);
           const q = query(
               collection(db, 'artifacts', appId, 'users', user.uid, 'history'),
               orderBy('timestamp', 'desc'),
@@ -307,13 +328,17 @@ export default function App() {
           );
           const unsubscribe = onSnapshot(q, (snapshot) => {
               const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              console.log('📚 History updated:', data.length, 'items');
               setHistoryData(data);
           }, (error) => {
-              console.error('Error fetching history:', error);
+              console.error('❌ Error fetching history:', error);
           });
           return () => unsubscribe();
+      } else {
+          console.log('📚 No user, clearing history data');
+          setHistoryData([]);
       }
-  }, [user, appState]);
+  }, [user]);
 
   useEffect(() => {
     if (appState === "learning") {
@@ -455,33 +480,51 @@ export default function App() {
   };
 
   const handleSaveResult = async () => {
+      console.log('💾 handleSaveResult called');
+      console.log('  - User:', user ? `${user.uid} (${user.email || 'anonymous'})` : 'NULL');
+      console.log('  - Course:', currentCourse ? currentCourse.title : 'NULL');
+      
       if (!user || !currentCourse) {
-          console.warn('Cannot save history - User:', user?.uid || 'none', 'Course:', !!currentCourse);
+          console.warn('⚠️ Cannot save history - User:', !!user, 'Course:', !!currentCourse);
           return;
       }
+      
       setIsSavingHistory(true);
       const finalScore = calculateScore();
       const successfullyCompleted = completedSentences.filter(Boolean).length;
       const failed = completedSentences.length - successfullyCompleted;
+      
+      const historyDoc = {
+          topic: currentCourse.title,
+          score: finalScore,
+          totalSentences: currentCourse.sentences.length,
+          completedCorrectly: successfullyCompleted,
+          failedSentences: failed,
+          timestamp: serverTimestamp(),
+          mistakes: statsRef.current.mistakes,
+          hints: statsRef.current.hints,
+          fullAnswers: statsRef.current.fullAnswers,
+          level: lengthOption,
+          courseData: currentCourse,
+          completedStatus: completedSentences,
+          sentenceErrors: sentenceErrors
+      };
+      
+      console.log('💾 Saving history doc:', {
+          topic: historyDoc.topic,
+          score: historyDoc.score,
+          totalSentences: historyDoc.totalSentences,
+          path: `artifacts/${appId}/users/${user.uid}/history`
+      });
+      
       try {
-          const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
-              topic: currentCourse.title,
-              score: finalScore,
-              totalSentences: currentCourse.sentences.length,
-              completedCorrectly: successfullyCompleted,
-              failedSentences: failed,
-              timestamp: serverTimestamp(),
-              mistakes: statsRef.current.mistakes,
-              hints: statsRef.current.hints,
-              fullAnswers: statsRef.current.fullAnswers,
-              level: lengthOption,
-              courseData: currentCourse,
-              completedStatus: completedSentences,
-              sentenceErrors: sentenceErrors
-          });
-          console.log('✅ History saved successfully:', docRef.id);
+          const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), historyDoc);
+          console.log('✅ History saved successfully with ID:', docRef.id);
+          console.log('   Path:', docRef.path);
       } catch (e) {
           console.error("❌ Error saving history:", e);
+          console.error("   Error code:", e.code);
+          console.error("   Error message:", e.message);
       } finally {
           setIsSavingHistory(false);
       }
@@ -492,6 +535,12 @@ export default function App() {
     if (!userInput.trim()) return;
     const currentSent = currentCourse.sentences[currentSentIndex];
     
+    // Bước 1: Kiểm tra semantic trước (ưu tiên nghĩa)
+    setFeedbackState("checking");
+    const vnContext = currentSent.segments.map(s => s.text).join("");
+    const semanticResult = await checkSemanticMatch(userInput, vnContext);
+
+    // Bước 2: Tìm đáp án gần nhất để so sánh chi tiết
     let bestMatch = null;
     let minDiffScore = Infinity;
     let bestDiff = null;
@@ -512,44 +561,41 @@ export default function App() {
       }
     });
 
-    if (minDiffScore === 0) {
-      setFeedbackState("correct");
-      const newCompleted = [...completedSentences];
-      newCompleted[currentSentIndex] = true;
-      setCompletedSentences(newCompleted);
-      setDetailedFeedback(bestDiff); 
-      setMatchedAnswer(bestMatch); 
-      setAiFeedbackMsg("Chính xác tuyệt đối!");
+    // Bước 3: Quyết định kết quả dựa trên semantic (ưu tiên cao hơn)
+    if (semanticResult.isCorrect) {
+        // ĐÚNG NGHĨA → Chấp nhận
+        setFeedbackState("correct");
+        const newCompleted = [...completedSentences];
+        newCompleted[currentSentIndex] = true;
+        setCompletedSentences(newCompleted);
+        setDetailedFeedback(bestDiff);
+        setMatchedAnswer(bestMatch);
+        
+        // Nếu có lỗi chính tả nhỏ (minDiffScore > 0 nhưng < 3), gợi ý
+        if (minDiffScore > 0 && minDiffScore <= 2) {
+            setAiFeedbackMsg("Đúng nghĩa! Tuy nhiên có vài lỗi chính tả nhỏ: " + (typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Hãy xem đáp án mẫu bên dưới."));
+        } else if (minDiffScore === 0) {
+            setAiFeedbackMsg("Chính xác tuyệt đối!");
+        } else {
+            setAiFeedbackMsg("Cách diễn đạt khác nhưng hoàn toàn chính xác về nghĩa!");
+        }
     } else {
-      setFeedbackState("checking"); 
-      const vnContext = currentSent.segments.map(s => s.text).join("");
-      const semanticResult = await checkSemanticMatch(userInput, vnContext);
-
-      if (semanticResult.isCorrect) {
-          setFeedbackState("correct");
-          const newCompleted = [...completedSentences];
-          newCompleted[currentSentIndex] = true;
-          setCompletedSentences(newCompleted);
-          setDetailedFeedback(bestDiff);
-          setMatchedAnswer(bestMatch); 
-          setAiFeedbackMsg("Cách diễn đạt khác nhưng hoàn toàn chính xác!");
-      } else {
-          setFeedbackState("incorrect");
-          setDetailedFeedback(bestDiff);
-          setMatchedAnswer(null);
-          setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.");
-          statsRef.current.mistakes += 1;
-          // Lưu lỗi chi tiết - THÊM vào array, không ghi đè
-          const newErrors = [...sentenceErrors];
-          if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
-          newErrors[currentSentIndex].push({
-            userAnswer: userInput,
-            correctAnswer: bestMatch,
-            feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.",
-            timestamp: new Date().toISOString()
-          });
-          setSentenceErrors(newErrors);
-      }
+        // SAI NGHĨA → Từ chối
+        setFeedbackState("incorrect");
+        setDetailedFeedback(bestDiff);
+        setMatchedAnswer(null);
+        setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa đúng nghĩa.");
+        statsRef.current.mistakes += 1;
+        // Lưu lỗi chi tiết
+        const newErrors = [...sentenceErrors];
+        if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
+        newErrors[currentSentIndex].push({
+          userAnswer: userInput,
+          correctAnswer: bestMatch,
+          feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.",
+          timestamp: new Date().toISOString()
+        });
+        setSentenceErrors(newErrors);
     }
   };
 
@@ -699,8 +745,8 @@ export default function App() {
 
                 {authMode !== 'forgot' && (
                     <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-lg p-1 mb-6`}>
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-slate-900') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-slate-900') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900')}`}>Đăng ký</button>
+                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')}`}>Đăng nhập</button>
+                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white' : 'bg-white text-indigo-600') + ' shadow' : (isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900')}`}>Đăng ký</button>
                     </div>
                 )}
 
@@ -739,8 +785,11 @@ export default function App() {
         <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 font-sans`} onClick={closeContextMenu}>
             <FontStyles />
             <header className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
-                <button onClick={() => setAppState("home")} className={`flex items-center gap-2 ${theme.secondaryText} hover:${theme.text}`}><ArrowRight className="w-5 h-5 rotate-180" /> Quay lại</button>
-                <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
+                <button onClick={() => setAppState("home")} className={`flex items-center gap-2 ${isDarkMode ? theme.secondaryText + ' hover:' + theme.text : 'text-indigo-600 hover:text-indigo-700'} font-medium transition-colors`}><ArrowRight className="w-5 h-5 rotate-180" /> Quay lại</button>
+                <div className="text-center">
+                    <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
+                    {user && <p className="text-xs text-indigo-500 font-medium mt-1">{historyData.length} bài học</p>}
+                </div>
                 <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} border ${theme.cardBorder}`}>
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                 </button>
@@ -749,7 +798,7 @@ export default function App() {
                 {!user ? (
                     <div className={`text-center py-20 ${theme.secondaryText}`}>
                         <p className="mb-4">Vui lòng đăng nhập để xem lịch sử</p>
-                        <button onClick={() => setAppState("login")} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl">
+                        <button onClick={() => setAppState("login")} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95`}>
                             Đăng nhập
                         </button>
                     </div>
@@ -924,7 +973,7 @@ export default function App() {
                 <h2 className={`text-xl font-bold ${theme.text}`}>Không thể tạo bài học</h2>
                 <p className={`${theme.secondaryText}`}>Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.</p>
             </div>
-            <button onClick={() => setAppState("home")} className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all">
+            <button onClick={() => setAppState("home")} className={`px-6 py-3 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-xl transition-all shadow-lg active:scale-95`}>
                 Quay lại trang chủ
             </button>
         </div>
@@ -1001,10 +1050,10 @@ export default function App() {
              </p>
           </div>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <button onClick={handleReturnHome} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95">
+            <button onClick={handleReturnHome} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
                 <RotateCcw className="w-5 h-5" /> Bài học mới
             </button>
-            <button onClick={() => setAppState("history")} className="bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95">
+            <button onClick={() => setAppState("history")} className={`${isDarkMode ? 'bg-slate-600 hover:bg-slate-700' : 'bg-slate-500 hover:bg-slate-600'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
                 <History className="w-5 h-5" /> Xem lịch sử
             </button>
           </div>
@@ -1097,7 +1146,7 @@ export default function App() {
                 </div>
             </div>
             <div className="flex items-center gap-3">
-                <button onClick={handleFinishEarly} className="hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-500/10 hover:bg-slate-500/20 text-slate-600 dark:text-slate-400 text-xs font-bold transition-colors"><SkipForward className="w-4 h-4" /> Kết thúc</button>
+                <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
                 <button onClick={toggleTheme} className={`p-2 rounded-full ${theme.cardBg} ${isDarkMode ? 'text-yellow-400' : 'text-orange-500'} shadow-sm border ${theme.cardBorder}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
                 <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
                     <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
@@ -1106,8 +1155,8 @@ export default function App() {
         </header>
 
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
-            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
-                <div className={`text-base md:text-lg leading-[2.5] ${theme.text} font-sans`}>
+            <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto custom-scrollbar`}>
+                <div className={`text-base md:text-lg leading-[2.5] ${theme.text} font-sans relative`} style={{zIndex: 1}}>
                     {currentCourse.sentences.map((sent, sIdx) => {
                         const isCompleted = completedSentences[sIdx];
                         const isActive = sIdx === currentSentIndex;
@@ -1120,7 +1169,7 @@ export default function App() {
                                 {sent.segments.map((seg, segIdx) => {
                                     const nextSeg = sent.segments[segIdx + 1];
                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none`} style={{zIndex: 9999}}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                    return <React.Fragment key={segIdx}><span className="tooltip-word group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`tooltip-content invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border-2 border-slate-600' : 'bg-slate-900 text-white border-2 border-slate-700'} text-sm font-medium rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
                                 })}
                             </span>
                         );
@@ -1191,7 +1240,7 @@ export default function App() {
                 {feedbackState !== 'correct' && (
                     <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
                         {!showHint ? (
-                            <button onClick={handleShowHint} className="w-full flex items-center justify-center gap-2 py-4 text-amber-500 hover:bg-amber-500/10 font-bold text-sm"><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
+                            <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'text-indigo-600 bg-indigo-50 hover:bg-indigo-100'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
                         ) : (
                             <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
                                 <button onClick={() => setShowHint(false)} className="absolute top-3 right-3 p-1.5 rounded-full bg-black/10 hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20 text-amber-600 dark:text-amber-400 transition-colors" title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
