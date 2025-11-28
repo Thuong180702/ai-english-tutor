@@ -299,6 +299,7 @@ export default function App() {
   // Fetch History
   useEffect(() => {
       if (user && appState === 'history') {
+          console.log('Fetching history for user:', user.uid);
           const q = query(
               collection(db, 'artifacts', appId, 'users', user.uid, 'history'),
               orderBy('timestamp', 'desc'),
@@ -306,9 +307,14 @@ export default function App() {
           );
           const unsubscribe = onSnapshot(q, (snapshot) => {
               const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+              console.log('History data received:', data.length, 'items');
               setHistoryData(data);
+          }, (error) => {
+              console.error('Error fetching history:', error);
           });
           return () => unsubscribe();
+      } else {
+          console.log('Not fetching history - user:', !!user, 'appState:', appState);
       }
   }, [user, appState]);
 
@@ -452,12 +458,16 @@ export default function App() {
   };
 
   const handleSaveResult = async () => {
-      if (!user || !currentCourse) return;
+      if (!user || !currentCourse) {
+          console.log('Cannot save - user:', !!user, 'currentCourse:', !!currentCourse);
+          return;
+      }
       const finalScore = calculateScore();
       const successfullyCompleted = completedSentences.filter(Boolean).length;
       const failed = completedSentences.length - successfullyCompleted;
       try {
-          await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
+          console.log('Saving history to Firebase...');
+          const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), {
               topic: currentCourse.title,
               score: finalScore,
               totalSentences: currentCourse.sentences.length,
@@ -472,6 +482,7 @@ export default function App() {
               completedStatus: completedSentences,
               sentenceErrors: sentenceErrors // Lưu chi tiết lỗi
           });
+          console.log('History saved successfully with ID:', docRef.id);
       } catch (e) {
           console.error("Error saving history:", e);
       }
@@ -618,10 +629,10 @@ export default function App() {
 
   const theme = {
     bg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
-    text: isDarkMode ? "text-slate-200" : "text-gray-900",
+    text: isDarkMode ? "text-slate-200" : "text-slate-700",
     cardBg: isDarkMode ? "bg-slate-800" : "bg-white",
     cardBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
-    secondaryText: isDarkMode ? "text-slate-400" : "text-gray-600",
+    secondaryText: isDarkMode ? "text-slate-400" : "text-slate-600",
     inputBg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
     inputBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
     inputText: isDarkMode ? "text-slate-200" : "text-gray-900",
@@ -735,7 +746,14 @@ export default function App() {
                 </button>
             </header>
             <div className="max-w-4xl mx-auto space-y-4 pb-10">
-                {historyData.length === 0 ? (
+                {!user ? (
+                    <div className={`text-center py-20 ${theme.secondaryText}`}>
+                        <p className="mb-4">Vui lòng đăng nhập để xem lịch sử</p>
+                        <button onClick={() => setAppState("login")} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl">
+                            Đăng nhập
+                        </button>
+                    </div>
+                ) : historyData.length === 0 ? (
                     <div className={`text-center py-20 ${theme.secondaryText}`}>Bạn chưa có bài học nào.</div>
                 ) : (
                     historyData.map((item) => (
@@ -973,9 +991,12 @@ export default function App() {
                {currentCourse?.sentences.map(s => s.acceptableAnswers[0]).join(" ")}
              </p>
           </div>
-          <div className="flex justify-center">
+          <div className="flex flex-col sm:flex-row justify-center gap-3">
             <button onClick={handleReturnHome} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95">
                 <RotateCcw className="w-5 h-5" /> Bài học mới
+            </button>
+            <button onClick={() => setAppState("history")} className="bg-slate-600 hover:bg-slate-700 text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95">
+                <History className="w-5 h-5" /> Xem lịch sử
             </button>
           </div>
         </div>
@@ -1084,13 +1105,13 @@ export default function App() {
                         if (isCompleted) return <span key={sent.id} className="text-green-500 dark:text-green-400 transition-all duration-500 mr-1">{sent.acceptableAnswers[0]} </span>;
                         let containerClass = "transition-all duration-300 inline mr-1 rounded px-1 ";
                         if (isActive) containerClass += `${theme.highlightBg} ${theme.highlightText} shadow-[inset_0_0_0_2px_rgba(99,102,241,0.5)] py-1 `;
-                        else containerClass += isDarkMode ? "text-slate-600 " : "text-slate-400 ";
+                        else containerClass += isDarkMode ? "text-slate-500 " : "text-gray-800 ";
                         return (
                             <span key={sent.id} className={containerClass}>
                                 {sent.segments.map((seg, segIdx) => {
                                     const nextSeg = sent.segments[segIdx + 1];
                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors z-10">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-all pointer-events-none`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-8 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all pointer-events-none`} style={{zIndex: 9999}}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
                                 })}
                             </span>
                         );
