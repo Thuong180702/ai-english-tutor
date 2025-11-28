@@ -257,7 +257,7 @@ export default function App() {
   const [showHint, setShowHint] = useState(false);
   const [showFullAnswer, setShowFullAnswer] = useState(false);
   const [completedSentences, setCompletedSentences] = useState([]);
-  const [sentenceErrors, setSentenceErrors] = useState([]); // Lưu lỗi chi tiết mỗi câu
+  const [sentenceErrors, setSentenceErrors] = useState([]); // Mảng array of arrays - lưu TẤT CẢ lần sai
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
   const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
@@ -424,7 +424,7 @@ export default function App() {
       setCurrentCourse(lessonData);
       setCurrentSentIndex(0);
       setCompletedSentences(new Array(lessonData.sentences.length).fill(false));
-      setSentenceErrors(new Array(lessonData.sentences.length).fill(null)); // Khởi tạo mảng lỗi
+      setSentenceErrors(new Array(lessonData.sentences.length).fill([])); // Khởi tạo array of arrays
       setUserInput("");
       setFeedbackState("idle");
       setDetailedFeedback(null);
@@ -529,13 +529,15 @@ export default function App() {
           setMatchedAnswer(null);
           setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.");
           statsRef.current.mistakes += 1;
-          // Lưu lỗi chi tiết
+          // Lưu lỗi chi tiết - THÊM vào array, không ghi đè
           const newErrors = [...sentenceErrors];
-          newErrors[currentSentIndex] = {
+          if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
+          newErrors[currentSentIndex].push({
             userAnswer: userInput,
             correctAnswer: bestMatch,
-            feedback: aiFeedbackMsg || semanticResult.feedback
-          };
+            feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Sai ngữ nghĩa.",
+            timestamp: new Date().toISOString()
+          });
           setSentenceErrors(newErrors);
       }
     }
@@ -615,20 +617,20 @@ export default function App() {
   };
 
   const theme = {
-    bg: isDarkMode ? "bg-slate-900" : "bg-slate-50",
-    text: isDarkMode ? "text-slate-200" : "text-slate-800",
+    bg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
+    text: isDarkMode ? "text-slate-200" : "text-gray-900",
     cardBg: isDarkMode ? "bg-slate-800" : "bg-white",
-    cardBorder: isDarkMode ? "border-slate-700" : "border-slate-200",
-    secondaryText: isDarkMode ? "text-slate-400" : "text-slate-500",
-    inputBg: isDarkMode ? "bg-slate-900" : "bg-slate-50",
-    inputBorder: isDarkMode ? "border-slate-700" : "border-slate-200",
-    inputText: isDarkMode ? "text-slate-200" : "text-slate-800",
+    cardBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
+    secondaryText: isDarkMode ? "text-slate-400" : "text-gray-600",
+    inputBg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
+    inputBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
+    inputText: isDarkMode ? "text-slate-200" : "text-gray-900",
     highlightBg: isDarkMode ? "bg-indigo-900/50" : "bg-indigo-100",
     highlightText: isDarkMode ? "text-indigo-200" : "text-indigo-950",
     successBg: isDarkMode ? "bg-green-900/30" : "bg-green-50",
-    successText: isDarkMode ? "text-green-300" : "text-green-700",
+    successText: isDarkMode ? "text-green-300" : "text-green-800",
     errorBg: isDarkMode ? "bg-red-900/30" : "bg-red-50",
-    errorText: isDarkMode ? "text-red-300" : "text-red-700",
+    errorText: isDarkMode ? "text-red-300" : "text-red-800",
   };
 
   const renderUserDiff = () => {
@@ -789,7 +791,8 @@ export default function App() {
                                 <div className="space-y-4">
                                     {selectedHistoryItem.courseData.sentences.map((sent, idx) => {
                                         const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
-                                        const errorDetail = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
+                                        const errorDetails = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
+                                        const errorCount = errorDetails && Array.isArray(errorDetails) ? errorDetails.length : (errorDetails ? 1 : 0);
                                         return (
                                             <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${isCompleted ? 'border-green-500/50' : 'border-red-500/50'}`}>
                                                 <div className="flex gap-3">
@@ -797,27 +800,45 @@ export default function App() {
                                                         {isCompleted ? '✓' : '✗'}
                                                     </span>
                                                     <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-2">
+                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                                                             <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
                                                             <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${isCompleted ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
                                                                 {isCompleted ? 'Đúng' : 'Sai'}
                                                             </span>
+                                                            {!isCompleted && errorCount > 0 && (
+                                                                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">
+                                                                    {errorCount} lần sai
+                                                                </span>
+                                                            )}
                                                         </div>
                                                         <p className={`font-medium ${theme.text} mb-2 text-base`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
                                                         <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'} p-3 rounded-lg mb-2`}>
                                                             <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
                                                             <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
                                                         </div>
-                                                        {!isCompleted && (
+                                                        {!isCompleted && errorDetails && (
                                                             <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
-                                                                {errorDetail ? (
+                                                                {Array.isArray(errorDetails) && errorDetails.length > 0 ? (
+                                                                    <div className="space-y-3">
+                                                                        <p className="text-xs font-bold text-red-400 mb-2">Chi tiết các lần sai ({errorDetails.length} lần):</p>
+                                                                        {errorDetails.map((error, errIdx) => (
+                                                                            <div key={errIdx} className={`${isDarkMode ? 'bg-red-900/30' : 'bg-red-100'} p-2 rounded border ${isDarkMode ? 'border-red-800' : 'border-red-300'}`}>
+                                                                                <p className="text-xs font-bold text-orange-400 mb-1">Lần {errIdx + 1}:</p>
+                                                                                <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-1`}>"{error.userAnswer || "Không trả lời"}"</p>
+                                                                                {error.feedback && (
+                                                                                    <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>💡 {error.feedback}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                ) : errorDetails.userAnswer ? (
                                                                     <>
                                                                         <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
-                                                                        <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2 font-medium`}>{errorDetail.userAnswer || "Không trả lời"}</p>
-                                                                        {errorDetail.feedback && (
+                                                                        <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2 font-medium`}>{errorDetails.userAnswer}</p>
+                                                                        {errorDetails.feedback && (
                                                                             <>
                                                                                 <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
-                                                                                <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetail.feedback}</p>
+                                                                                <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetails.feedback}</p>
                                                                             </>
                                                                         )}
                                                                     </>
@@ -1056,20 +1077,20 @@ export default function App() {
 
         <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
             <div className={`lg:col-span-8 ${theme.cardBg} p-6 rounded-3xl shadow-xl border ${theme.cardBorder} overflow-y-auto relative h-[30vh] lg:h-auto custom-scrollbar`}>
-                <div className={`text-base md:text-lg leading-[2.0] ${theme.text} font-sans`}>
+                <div className={`text-base md:text-lg leading-[2.5] ${theme.text} font-sans`}>
                     {currentCourse.sentences.map((sent, sIdx) => {
                         const isCompleted = completedSentences[sIdx];
                         const isActive = sIdx === currentSentIndex;
                         if (isCompleted) return <span key={sent.id} className="text-green-500 dark:text-green-400 transition-all duration-500 mr-1">{sent.acceptableAnswers[0]} </span>;
                         let containerClass = "transition-all duration-300 inline mr-1 rounded px-1 ";
                         if (isActive) containerClass += `${theme.highlightBg} ${theme.highlightText} shadow-[inset_0_0_0_2px_rgba(99,102,241,0.5)] py-1 `;
-                        else containerClass += isDarkMode ? "text-slate-600 " : "text-slate-300 ";
+                        else containerClass += isDarkMode ? "text-slate-600 " : "text-slate-400 ";
                         return (
                             <span key={sent.id} className={containerClass}>
                                 {sent.segments.map((seg, segIdx) => {
                                     const nextSeg = sent.segments[segIdx + 1];
                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 ${isDarkMode ? 'bg-slate-200 text-slate-900' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-lg whitespace-nowrap z-20 opacity-0 group-hover:opacity-100 transition-all pointer-events-none`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                    return <React.Fragment key={segIdx}><span className="group relative cursor-help inline-block hover:text-indigo-500 transition-colors z-10">{seg.text}<span className={`invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border border-slate-600' : 'bg-slate-900 text-white'} text-sm rounded-lg shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-all pointer-events-none`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
                                 })}
                             </span>
                         );
