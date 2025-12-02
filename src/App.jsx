@@ -357,14 +357,12 @@ export default function App() {
     // --- LISTEN MODE STATE ---
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-    const [utterance, setUtterance] = useState(null);
 
     const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
     const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
     const inputRef = useRef(null);
     const chatEndRef = useRef(null);
     const topicInputRef = useRef(null);
-    const audioRef = useRef(null);
 
     // --- AUTH & FIREBASE EFFECTS ---
     useEffect(() => {
@@ -620,12 +618,51 @@ export default function App() {
         if (!userInput.trim()) return;
         const currentSent = currentCourse.sentences[currentSentIndex];
 
-        // Bước 1: Kiểm tra semantic với AI (kiểm tra nghĩa + chính tả)
+        // LISTEN MODE: Simple word-by-word comparison (like dailydictation)
+        if (currentCourse.learningMode === "listen") {
+            const correctText = currentSent.english;
+
+            // Check if completely correct
+            const isCompletelyCorrect = userInput.trim().toLowerCase() === correctText.toLowerCase();
+
+            if (isCompletelyCorrect) {
+                setFeedbackState("correct");
+                const newCompleted = [...completedSentences];
+                newCompleted[currentSentIndex] = true;
+                setCompletedSentences(newCompleted);
+                setAiFeedbackMsg("Chính xác!");
+                // Use getWordDiff for visual display
+                const diff = getWordDiff(userInput, correctText);
+                setDetailedFeedback(diff);
+                setMatchedAnswer(correctText);
+            } else {
+                setFeedbackState("incorrect");
+                statsRef.current.mistakes += 1;
+                const diff = getWordDiff(userInput, correctText);
+                setDetailedFeedback(diff);
+                setMatchedAnswer(null);
+                setAiFeedbackMsg("Chưa chính xác. Kiểm tra lại!");
+
+                // Save error details
+                const newErrors = [...sentenceErrors];
+                if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
+                newErrors[currentSentIndex].push({
+                    userAnswer: userInput,
+                    correctAnswer: correctText,
+                    feedback: "Sai chính tả",
+                    timestamp: new Date().toISOString()
+                });
+                setSentenceErrors(newErrors);
+            }
+            return;
+        }
+
+        // WRITE MODE: Use AI semantic checking (existing logic)
         setFeedbackState("checking");
         const vnContext = currentSent.segments.map(s => s.text).join("");
         const semanticResult = await checkSemanticMatch(userInput, vnContext, currentSent.acceptableAnswers);
 
-        // Bước 2: Tìm đáp án gần nhất để hiển thị diff
+        // Find best match for diff display
         let bestMatch = null;
         let minDiffScore = Infinity;
         let bestDiff = null;
@@ -646,17 +683,14 @@ export default function App() {
             }
         });
 
-        // Bước 3: Quyết định kết quả dựa trên AI (kiểm tra chặt chẽ cả nghĩa lẫn chính tả)
+        // Decision based on AI result
         if (semanticResult.apiError) {
-            // API LỖI → Cho phép thử lại, không tính là sai
             setFeedbackState("idle");
             setAiFeedbackMsg(semanticResult.feedback || "Lỗi kết nối API. Vui lòng thử lại.");
-            // Không tăng mistakes, không lưu lỗi
             return;
         }
 
         if (semanticResult.isCorrect) {
-            // ĐÚNG → Chấp nhận
             setFeedbackState("correct");
             const newCompleted = [...completedSentences];
             newCompleted[currentSentIndex] = true;
@@ -664,7 +698,6 @@ export default function App() {
             setDetailedFeedback(bestDiff);
             setMatchedAnswer(bestMatch);
 
-            // Hiển thị feedback nếu có
             if (semanticResult.feedback && semanticResult.feedback.trim()) {
                 setAiFeedbackMsg(semanticResult.feedback);
             } else if (minDiffScore === 0) {
@@ -673,13 +706,12 @@ export default function App() {
                 setAiFeedbackMsg("Chính xác!");
             }
         } else {
-            // SAI → Từ chối (có thể do nghĩa sai hoặc lỗi chính tả nghiêm trọng)
             setFeedbackState("incorrect");
             setDetailedFeedback(bestDiff);
             setMatchedAnswer(null);
             setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa chính xác.");
             statsRef.current.mistakes += 1;
-            // Lưu lỗi chi tiết
+            // Save error details
             const newErrors = [...sentenceErrors];
             if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
             newErrors[currentSentIndex].push({
@@ -779,7 +811,6 @@ export default function App() {
         newUtterance.onend = () => setIsPlaying(false);
         newUtterance.onerror = () => setIsPlaying(false);
 
-        setUtterance(newUtterance);
         window.speechSynthesis.speak(newUtterance);
     };
 
@@ -1525,7 +1556,7 @@ export default function App() {
                                                 <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
                                                 {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
                                                 <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
-                                                {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
+                                                {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.learningMode === "listen" ? currentCourse.sentences[currentSentIndex].english : currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
                                             </div>
                                         </div>
                                     )}
