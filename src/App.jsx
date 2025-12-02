@@ -1,32 +1,32 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Lightbulb, CheckCircle, XCircle, RefreshCw, BookOpen, ArrowRight, Sparkles, Brain, RotateCcw, AlertCircle, Loader2, Moon, Sun, AlertTriangle, Info, Search, Book, ChevronUp, User, History, LogOut, Calendar, Award, SkipForward, GitCompare, Mail, Lock, ChevronRight, X, KeyRound } from 'lucide-react';
+import { Send, Lightbulb, CheckCircle, XCircle, RefreshCw, BookOpen, ArrowRight, Sparkles, Brain, RotateCcw, AlertCircle, Loader2, Moon, Sun, AlertTriangle, Info, Search, Book, ChevronUp, User, History, LogOut, Calendar, Award, SkipForward, GitCompare, Mail, Lock, ChevronRight, X, KeyRound, Headphones, Play, Pause, Edit3 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
-import { 
-  getAuth, 
-  signInWithCustomToken, 
-  signInAnonymously, 
-  onAuthStateChanged, 
-  updateProfile, 
-  signOut,
-  signInWithPopup,
-  GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail,
-  sendEmailVerification
+import {
+    getAuth,
+    signInWithCustomToken,
+    signInAnonymously,
+    onAuthStateChanged,
+    updateProfile,
+    signOut,
+    signInWithPopup,
+    GoogleAuthProvider,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    sendPasswordResetEmail,
+    sendEmailVerification
 } from 'firebase/auth';
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, deleteDoc, doc } from 'firebase/firestore';
 
 // --- FIREBASE SETUP ---
 // Cấu hình thủ công (Manual Config) cho dự án của bạn
 const manualFirebaseConfig = {
-  apiKey: "AIzaSyBeQemubnB8jBWLiPZob5HiDC4yubuxupI",
-  authDomain: "learn-d8e71.firebaseapp.com",
-  projectId: "learn-d8e71",
-  storageBucket: "learn-d8e71.firebasestorage.app",
-  messagingSenderId: "1098133970936",
-  appId: "1:1098133970936:web:fed75c94fc73c36585000d",
-  measurementId: "G-VH6H0XJKLP"
+    apiKey: "AIzaSyBeQemubnB8jBWLiPZob5HiDC4yubuxupI",
+    authDomain: "learn-d8e71.firebaseapp.com",
+    projectId: "learn-d8e71",
+    storageBucket: "learn-d8e71.firebasestorage.app",
+    messagingSenderId: "1098133970936",
+    appId: "1:1098133970936:web:fed75c94fc73c36585000d",
+    measurementId: "G-VH6H0XJKLP"
 };
 
 // Ưu tiên dùng biến môi trường nếu có, nếu không dùng config thủ công
@@ -41,7 +41,7 @@ const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
 // --- STYLES ---
 const FontStyles = () => (
-  <style>{`
+    <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
     body, textarea, input, button { font-family: 'Be Vietnam Pro', sans-serif !important; }
     .diff-anim { animation: fadeIn 0.5s ease-out; }
@@ -58,66 +58,66 @@ const FontStyles = () => (
 
 // --- CONSTANTS ---
 const TOPIC_POOL = [
-  "Startup công nghệ", "Trí tuệ nhân tạo", "Khoa học vũ trụ", "Công nghệ Blockchain", 
-  "Du lịch bụi", "Ẩm thực đường phố", "Lối sống tối giản", "Sức khỏe tinh thần",
-  "Email công việc", "Kỹ năng đàm phán", "Tài chính cá nhân", "Lãnh đạo nhóm",
-  "Review phim", "Lịch sử thế giới", "Nhiếp ảnh đường phố", "Biến đổi khí hậu"
+    "Startup công nghệ", "Trí tuệ nhân tạo", "Khoa học vũ trụ", "Công nghệ Blockchain",
+    "Du lịch bụi", "Ẩm thực đường phố", "Lối sống tối giản", "Sức khỏe tinh thần",
+    "Email công việc", "Kỹ năng đàm phán", "Tài chính cá nhân", "Lãnh đạo nhóm",
+    "Review phim", "Lịch sử thế giới", "Nhiếp ảnh đường phố", "Biến đổi khí hậu"
 ];
 
 // --- DIFF ALGORITHM ---
 const getWordDiff = (userText, targetText) => {
-  const normalizeQuotes = (s) => s.replace(/['’‘]/g, "'");
-  const tokenize = (text) => normalizeQuotes(text).replace(/([.,!?;:()])/g, " $1 ").trim().split(/\s+/);
-  const cleanWord = (w) => w.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, "");
+    const normalizeQuotes = (s) => s.replace(/['’‘]/g, "'");
+    const tokenize = (text) => normalizeQuotes(text).replace(/([.,!?;:()])/g, " $1 ").trim().split(/\s+/);
+    const cleanWord = (w) => w.toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, "");
 
-  const uWords = tokenize(userText);
-  const tWords = tokenize(targetText);
-  
-  const m = uWords.length;
-  const n = tWords.length;
-  const dp = Array(m + 1).fill().map(() => Array(n + 1).fill(0));
+    const uWords = tokenize(userText);
+    const tWords = tokenize(targetText);
 
-  for (let i = 1; i <= m; i++) {
-    for (let j = 1; j <= n; j++) {
-      const uClean = cleanWord(uWords[i - 1]);
-      const tClean = cleanWord(tWords[j - 1]);
-      const isMatch = uWords[i - 1].toLowerCase() === tWords[j - 1].toLowerCase() || (uClean !== "" && uClean === tClean);
-      if (isMatch) dp[i][j] = dp[i - 1][j - 1] + 1;
-      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+    const m = uWords.length;
+    const n = tWords.length;
+    const dp = Array(m + 1).fill().map(() => Array(n + 1).fill(0));
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            const uClean = cleanWord(uWords[i - 1]);
+            const tClean = cleanWord(tWords[j - 1]);
+            const isMatch = uWords[i - 1].toLowerCase() === tWords[j - 1].toLowerCase() || (uClean !== "" && uClean === tClean);
+            if (isMatch) dp[i][j] = dp[i - 1][j - 1] + 1;
+            else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+        }
     }
-  }
 
-  let i = m, j = n;
-  const diff = [];
-  while (i > 0 && j > 0) {
-    const uClean = cleanWord(uWords[i - 1]);
-    const tClean = cleanWord(tWords[j - 1]);
-    const isMatch = uWords[i - 1].toLowerCase() === tWords[j - 1].toLowerCase() || (uClean !== "" && uClean === tClean);
+    let i = m, j = n;
+    const diff = [];
+    while (i > 0 && j > 0) {
+        const uClean = cleanWord(uWords[i - 1]);
+        const tClean = cleanWord(tWords[j - 1]);
+        const isMatch = uWords[i - 1].toLowerCase() === tWords[j - 1].toLowerCase() || (uClean !== "" && uClean === tClean);
 
-    if (isMatch) {
-      diff.unshift({ type: 'same', value: uWords[i - 1] });
-      i--; j--;
-    } else if (dp[i - 1][j] > dp[i][j - 1]) {
-      diff.unshift({ type: 'remove', value: uWords[i - 1] });
-      i--;
-    } else {
-      diff.unshift({ type: 'add', value: tWords[j - 1] });
-      j--;
+        if (isMatch) {
+            diff.unshift({ type: 'same', value: uWords[i - 1] });
+            i--; j--;
+        } else if (dp[i - 1][j] > dp[i][j - 1]) {
+            diff.unshift({ type: 'remove', value: uWords[i - 1] });
+            i--;
+        } else {
+            diff.unshift({ type: 'add', value: tWords[j - 1] });
+            j--;
+        }
     }
-  }
-  while (i > 0) { diff.unshift({ type: 'remove', value: uWords[i - 1] }); i--; }
-  while (j > 0) { diff.unshift({ type: 'add', value: tWords[j - 1] }); j--; }
+    while (i > 0) { diff.unshift({ type: 'remove', value: uWords[i - 1] }); i--; }
+    while (j > 0) { diff.unshift({ type: 'add', value: tWords[j - 1] }); j--; }
 
-  const groupedDiff = [];
-  for (let k = 0; k < diff.length; k++) {
-    if (diff[k].type === 'remove' && diff[k+1]?.type === 'add') {
-      groupedDiff.push({ type: 'replace', oldVal: diff[k].value, newVal: diff[k+1].value });
-      k++;
-    } else {
-      groupedDiff.push(diff[k]);
+    const groupedDiff = [];
+    for (let k = 0; k < diff.length; k++) {
+        if (diff[k].type === 'remove' && diff[k + 1]?.type === 'add') {
+            groupedDiff.push({ type: 'replace', oldVal: diff[k].value, newVal: diff[k + 1].value });
+            k++;
+        } else {
+            groupedDiff.push(diff[k]);
+        }
     }
-  }
-  return groupedDiff;
+    return groupedDiff;
 };
 
 // --- API HANDLING ---
@@ -125,15 +125,15 @@ const getWordDiff = (userText, targetText) => {
 const apiKey = "AIzaSyDqDfB3lsg11GFoIarvbL_B7H1EKkm4aKo";
 
 const generateLessonContent = async (topic, lengthOption) => {
-  let lengthPrompt = "";
-  switch (lengthOption) {
-      case 'short': lengthPrompt = "Generate a SHORT story/essay (approx 5-8 sentences). Keep it concise."; break;
-      case 'medium': lengthPrompt = "Generate a MEDIUM length story/essay (approx 12-15 sentences)."; break;
-      case 'long': lengthPrompt = "Generate a LONG, DETAILED story/essay (more than 20 sentences). Elaborate on details."; break;
-      default: lengthPrompt = "Generate a MEDIUM length story/essay (approx 10-15 sentences).";
-  }
+    let lengthPrompt = "";
+    switch (lengthOption) {
+        case 'short': lengthPrompt = "Generate a SHORT story/essay (approx 5-8 sentences). Keep it concise."; break;
+        case 'medium': lengthPrompt = "Generate a MEDIUM length story/essay (approx 12-15 sentences)."; break;
+        case 'long': lengthPrompt = "Generate a LONG, DETAILED story/essay (more than 20 sentences). Elaborate on details."; break;
+        default: lengthPrompt = "Generate a MEDIUM length story/essay (approx 10-15 sentences).";
+    }
 
-  const systemPrompt = `
+    const systemPrompt = `
     You are an expert English tutor for Vietnamese students.
     Task: Create a translation lesson based on the topic: "${topic}".
     CRITICAL REQUIREMENT: ${lengthPrompt}. Split content into logical sentences.
@@ -157,28 +157,28 @@ const generateLessonContent = async (topic, lengthOption) => {
     }
   `;
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: systemPrompt }] }],
-          generationConfig: { responseMimeType: "application/json" }
-        })
-      }
-    );
-    if (!response.ok) {
-      console.error("API Error:", response.status, await response.text());
-      throw new Error("API Call Failed");
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            }
+        );
+        if (!response.ok) {
+            console.error("API Error:", response.status, await response.text());
+            throw new Error("API Call Failed");
+        }
+        const data = await response.json();
+        return JSON.parse(data.candidates[0].content.parts[0].text);
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        return null;
     }
-    const data = await response.json();
-    return JSON.parse(data.candidates[0].content.parts[0].text);
-  } catch (error) {
-    console.error("AI Generation Error:", error);
-    return null;
-  }
 };
 
 const checkSemanticMatch = async (userAnswer, originalVietnamese, correctAnswers) => {
@@ -250,1040 +250,1292 @@ const analyzeErrorWithAI = async (userAnswer, correctAnswer, vietnameseContext) 
     }
 };
 
+// Generate Listen Mode Lesson (Dictation)
+const generateListenLessonContent = async (topic, lengthOption) => {
+    let lengthPrompt = "";
+    switch (lengthOption) {
+        case 'short': lengthPrompt = "Generate 5-8 sentences for dictation practice."; break;
+        case 'medium': lengthPrompt = "Generate 12-15 sentences for dictation practice."; break;
+        case 'long': lengthPrompt = "Generate 20-25 sentences for dictation practice."; break;
+        default: lengthPrompt = "Generate 10-15 sentences for dictation practice.";
+    }
+
+    const systemPrompt = `
+You are an English dictation teacher for Vietnamese students.
+Topic: "${topic}"
+Task: Create an English dictation exercise. ${lengthPrompt}
+
+Requirements:
+- All sentences in ENGLISH only
+- Natural, conversational English
+- Varied difficulty (mix of easy/medium/hard)
+- Clear, complete sentences
+- Contextually connected to the topic
+
+Output JSON ONLY:
+{
+  "title": "Catchy title in Vietnamese (VD: 'Nghe Chính Tả: Cuộc Sống Trên Sao Hỏa')",
+  "type": "Dictation",
+  "learningMode": "listen",
+  "sentences": [
+    {
+      "id": 1,
+      "english": "The full English sentence to dictate",
+      "hint": "Optional Vietnamese hint about context",
+      "difficulty": "easy|medium|hard"
+    }
+  ]
+}
+  `;
+
+    try {
+        const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: systemPrompt }] }],
+                    generationConfig: { responseMimeType: "application/json" }
+                })
+            }
+        );
+        if (!response.ok) {
+            console.error("API Error:", response.status, await response.text());
+            throw new Error("API Call Failed");
+        }
+        const data = await response.json();
+        return JSON.parse(data.candidates[0].content.parts[0].text);
+    } catch (error) {
+        console.error("AI Generation Error:", error);
+        return null;
+    }
+};
+
 const getRandomTopics = () => [...TOPIC_POOL].sort(() => 0.5 - Math.random()).slice(0, 4);
 
 export default function App() {
-  // --- APP STATE ---
-  const [user, setUser] = useState(null);
-  const [isAuthChecking, setIsAuthChecking] = useState(true);
-  const [appState, setAppState] = useState("login"); 
-  const [topicInput, setTopicInput] = useState("");
-  const [lengthOption, setLengthOption] = useState("medium");
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  const [suggestedTopics, setSuggestedTopics] = useState(() => getRandomTopics());
-  const [historyData, setHistoryData] = useState([]);
-  
-  // Auth States
-  const [authMode, setAuthMode] = useState("login"); // login, register, forgot
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [verificationSent, setVerificationSent] = useState(false); 
+    // --- APP STATE ---
+    const [user, setUser] = useState(null);
+    const [isAuthChecking, setIsAuthChecking] = useState(true);
+    const [appState, setAppState] = useState("login");
+    const [topicInput, setTopicInput] = useState("");
+    const [lengthOption, setLengthOption] = useState("medium");
+    const [learningMode, setLearningMode] = useState("write"); // "write" | "listen"
+    const [isDarkMode, setIsDarkMode] = useState(true);
+    const [suggestedTopics, setSuggestedTopics] = useState(() => getRandomTopics());
+    const [historyData, setHistoryData] = useState([]);
+    const [historyFilter, setHistoryFilter] = useState("all"); // "all" | "write" | "listen"
 
-  // --- LEARNING STATE ---
-  const [currentCourse, setCurrentCourse] = useState(null);
-  const [currentSentIndex, setCurrentSentIndex] = useState(0);
-  const [userInput, setUserInput] = useState("");
-  const [feedbackState, setFeedbackState] = useState("idle"); 
-  const [detailedFeedback, setDetailedFeedback] = useState(null); 
-  const [aiFeedbackMsg, setAiFeedbackMsg] = useState("");
-  const [matchedAnswer, setMatchedAnswer] = useState(null);
-  const [showHint, setShowHint] = useState(false);
-  const [showFullAnswer, setShowFullAnswer] = useState(false);
-  const [completedSentences, setCompletedSentences] = useState([]);
-  const [sentenceErrors, setSentenceErrors] = useState([]); // Mảng array of arrays - lưu TẤT CẢ lần sai
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
-  const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
-  const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemId: null });
-  const [isSavingHistory, setIsSavingHistory] = useState(false);
+    // Auth States
+    const [authMode, setAuthMode] = useState("login"); // login, register, forgot
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [displayName, setDisplayName] = useState("");
+    const [authError, setAuthError] = useState("");
+    const [resetEmailSent, setResetEmailSent] = useState(false);
+    const [verificationSent, setVerificationSent] = useState(false);
 
-  const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
-  const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
-  const inputRef = useRef(null);
-  const chatEndRef = useRef(null);
-  const topicInputRef = useRef(null);
+    // --- LEARNING STATE ---
+    const [currentCourse, setCurrentCourse] = useState(null);
+    const [currentSentIndex, setCurrentSentIndex] = useState(0);
+    const [userInput, setUserInput] = useState("");
+    const [feedbackState, setFeedbackState] = useState("idle");
+    const [detailedFeedback, setDetailedFeedback] = useState(null);
+    const [aiFeedbackMsg, setAiFeedbackMsg] = useState("");
+    const [matchedAnswer, setMatchedAnswer] = useState(null);
+    const [showHint, setShowHint] = useState(false);
+    const [showFullAnswer, setShowFullAnswer] = useState(false);
+    const [completedSentences, setCompletedSentences] = useState([]);
+    const [sentenceErrors, setSentenceErrors] = useState([]); // Mảng array of arrays - lưu TẤT CẢ lần sai
+    const [showConfirmModal, setShowConfirmModal] = useState(false);
+    const [selectedHistoryItem, setSelectedHistoryItem] = useState(null);
+    const [summaryStats, setSummaryStats] = useState({ mistakes: 0, hints: 0, fullAnswers: 0 });
+    const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, itemId: null });
+    const [isSavingHistory, setIsSavingHistory] = useState(false);
 
-  // --- AUTH & FIREBASE EFFECTS ---
-  useEffect(() => {
-    const initAuth = async () => {
-      // eslint-disable-next-line no-undef
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        // eslint-disable-next-line no-undef
-        await signInWithCustomToken(auth, __initial_auth_token);
-      }
-      setIsAuthChecking(false);
-    };
-    initAuth();
-    
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-        setUser(u);
-        if (u && u.email && u.emailVerified) {
-            setAppState("home");
-        } else if (u && u.isAnonymous) {
-            setAppState("home");
-        } else if (u && u.email && !u.emailVerified) {
-            // Stay on login, waiting for verification
-        } else {
-            setAppState("login");
-        }
-    });
-    return () => unsubscribe();
-  }, []);
+    // --- LISTEN MODE STATE ---
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+    const [utterance, setUtterance] = useState(null);
 
-  // Fetch History - Fetch ngay khi có user, không chờ vào màn history
-  useEffect(() => {
-      if (user) {
-          console.log('📚 Setting up history listener for user:', user.uid);
-          const q = query(
-              collection(db, 'artifacts', appId, 'users', user.uid, 'history'),
-              orderBy('timestamp', 'desc'),
-              limit(20)
-          );
-          const unsubscribe = onSnapshot(q, (snapshot) => {
-              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              console.log('📚 History updated:', data.length, 'items');
-              setHistoryData(data);
-          }, (error) => {
-              console.error('❌ Error fetching history:', error);
-          });
-          return () => unsubscribe();
-      } else {
-          console.log('📚 No user, clearing history data');
-          setHistoryData([]);
-      }
-  }, [user]);
+    const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
+    const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
+    const inputRef = useRef(null);
+    const chatEndRef = useRef(null);
+    const topicInputRef = useRef(null);
+    const audioRef = useRef(null);
 
-  useEffect(() => {
-    if (appState === "learning") {
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      if (inputRef.current && feedbackState !== 'correct' && feedbackState !== 'checking') inputRef.current.focus();
-    }
-  }, [feedbackState, showHint, showFullAnswer, currentSentIndex, appState]);
+    // --- AUTH & FIREBASE EFFECTS ---
+    useEffect(() => {
+        const initAuth = async () => {
+            // eslint-disable-next-line no-undef
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                // eslint-disable-next-line no-undef
+                await signInWithCustomToken(auth, __initial_auth_token);
+            }
+            setIsAuthChecking(false);
+        };
+        initAuth();
 
-  // --- AUTH HANDLERS ---
-
-  const handleEmailLogin = async (e) => {
-      e.preventDefault();
-      setAuthError("");
-      try {
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          if (userCredential.user && !userCredential.user.emailVerified) {
-              await signOut(auth);
-              setAuthError("Email chưa được xác thực. Vui lòng kiểm tra hộp thư.");
-              return;
-          }
-      } catch (err) {
-          if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-              setAuthError("Email hoặc mật khẩu không chính xác.");
-          } else {
-              setAuthError("Đăng nhập thất bại. Vui lòng thử lại.");
-          }
-      }
-  };
-
-  const handleRegister = async (e) => {
-      e.preventDefault();
-      setAuthError("");
-      setVerificationSent(false);
-      if (!displayName) { setAuthError("Vui lòng nhập tên hiển thị"); return; }
-      try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          await updateProfile(userCredential.user, { displayName: displayName });
-          await sendEmailVerification(userCredential.user);
-          setVerificationSent(true);
-          await signOut(auth); 
-          setAuthMode("login"); 
-      } catch (err) {
-          console.error(err);
-          if (err.code === 'auth/email-already-in-use') {
-              setAuthError("Email này đã được sử dụng. Vui lòng đăng nhập.");
-          } else if (err.code === 'auth/weak-password') {
-              setAuthError("Mật khẩu quá yếu.");
-          } else {
-              setAuthError("Đăng ký thất bại. Vui lòng thử lại.");
-          }
-      }
-  };
-
-  const handleResetPassword = async (e) => {
-      e.preventDefault();
-      setAuthError("");
-      setResetEmailSent(false);
-      if (!email) { setAuthError("Vui lòng nhập email."); return; }
-      try {
-          await sendPasswordResetEmail(auth, email);
-          setResetEmailSent(true);
-          setAuthError("");
-      } catch {
-          setAuthError("Lỗi gửi email. Vui lòng thử lại sau.");
-      }
-  };
-
-  const handleGoogleLogin = async () => {
-      setAuthError("");
-      try {
-          const provider = new GoogleAuthProvider();
-          await signInWithPopup(auth, provider);
-      } catch (err) {
-          setAuthError("Đăng nhập Google thất bại.");
-          console.error(err);
-      }
-  };
-
-  const handleGuestLogin = async () => {
-      setAuthError("");
-      try {
-          await signInAnonymously(auth);
-          setAppState("home");
-      } catch {
-          setAuthError("Lỗi đăng nhập khách.");
-      }
-  };
-
-  const handleLogout = async () => {
-      await signOut(auth);
-      setAppState("login");
-      setEmail("");
-      setPassword("");
-      setDisplayName("");
-      setAuthMode("login");
-      setVerificationSent(false);
-  };
-
-  // --- APP HANDLERS ---
-
-  const handleStartGeneration = async (e) => {
-    e.preventDefault();
-    if (!topicInput.trim()) return;
-    setAppState("generating");
-    statsRef.current = { mistakes: 0, hints: 0, fullAnswers: 0 };
-    sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
-
-    const lessonData = await generateLessonContent(topicInput, lengthOption);
-    
-    if (lessonData?.sentences?.length > 0) {
-      setCurrentCourse(lessonData);
-      setCurrentSentIndex(0);
-      setCompletedSentences(new Array(lessonData.sentences.length).fill(false));
-      setSentenceErrors(Array.from({ length: lessonData.sentences.length }, () => [])); // Khởi tạo array of arrays - mỗi phần tử là mảng riêng biệt
-      setUserInput("");
-      setFeedbackState("idle");
-      setDetailedFeedback(null);
-      setAiFeedbackMsg("");
-      setMatchedAnswer(null);
-      setShowHint(false);
-      setShowFullAnswer(false);
-      setShowConfirmModal(false);
-      setAppState("learning");
-    } else {
-      setAppState("error");
-    }
-  };
-
-  const calculateScore = (stats = null) => {
-      const totalSentences = currentCourse?.sentences?.length || 1;
-      const successfullyCompleted = completedSentences.filter(Boolean).length;
-      const currentStats = stats || statsRef.current;
-      // Tính tỷ lệ hoàn thành (0-100)
-      const completionRate = (successfullyCompleted / totalSentences) * 100;
-      // Penalty cho lỗi sai và gợi ý
-      const penalty = (currentStats.mistakes * 3) + (currentStats.fullAnswers * 10);
-      // Điểm = tỷ lệ hoàn thành - penalty, tối thiểu 0
-      return Math.max(0, Math.round(completionRate - penalty));
-  };
-
-  const handleSaveResult = async () => {
-      console.log('💾 handleSaveResult called');
-      console.log('  - User:', user ? `${user.uid} (${user.email || 'anonymous'})` : 'NULL');
-      console.log('  - Course:', currentCourse ? currentCourse.title : 'NULL');
-      
-      if (!user || !currentCourse) {
-          console.warn('⚠️ Cannot save history - User:', !!user, 'Course:', !!currentCourse);
-          return;
-      }
-      
-      setIsSavingHistory(true);
-      const finalScore = calculateScore();
-      const successfullyCompleted = completedSentences.filter(Boolean).length;
-      const failed = completedSentences.length - successfullyCompleted;
-      
-      const historyDoc = {
-          topic: currentCourse.title,
-          score: finalScore,
-          totalSentences: currentCourse.sentences.length,
-          completedCorrectly: successfullyCompleted,
-          failedSentences: failed,
-          timestamp: serverTimestamp(),
-          mistakes: statsRef.current.mistakes,
-          hints: statsRef.current.hints,
-          fullAnswers: statsRef.current.fullAnswers,
-          level: lengthOption,
-          courseData: currentCourse,
-          completedStatus: completedSentences,
-          // Chuyển đổi nested arrays thành object với key là index
-          sentenceErrors: sentenceErrors.reduce((acc, errors, idx) => {
-              if (errors && errors.length > 0) {
-                  acc[idx] = errors;
-              }
-              return acc;
-          }, {})
-      };
-      
-      console.log('💾 Saving history doc:', {
-          topic: historyDoc.topic,
-          score: historyDoc.score,
-          totalSentences: historyDoc.totalSentences,
-          path: `artifacts/${appId}/users/${user.uid}/history`
-      });
-      
-      try {
-          const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), historyDoc);
-          console.log('✅ History saved successfully with ID:', docRef.id);
-          console.log('   Path:', docRef.path);
-      } catch (e) {
-          console.error("❌ Error saving history:", e);
-          console.error("   Error code:", e.code);
-          console.error("   Error message:", e.message);
-      } finally {
-          setIsSavingHistory(false);
-      }
-  };
-
-  const handleCheck = async (e) => {
-    e.preventDefault();
-    if (!userInput.trim()) return;
-    const currentSent = currentCourse.sentences[currentSentIndex];
-    
-    // Bước 1: Kiểm tra semantic với AI (kiểm tra nghĩa + chính tả)
-    setFeedbackState("checking");
-    const vnContext = currentSent.segments.map(s => s.text).join("");
-    const semanticResult = await checkSemanticMatch(userInput, vnContext, currentSent.acceptableAnswers);
-
-    // Bước 2: Tìm đáp án gần nhất để hiển thị diff
-    let bestMatch = null;
-    let minDiffScore = Infinity;
-    let bestDiff = null;
-
-    currentSent.acceptableAnswers.forEach(answer => {
-      const diff = getWordDiff(userInput, answer);
-      const errorScore = diff.reduce((acc, part) => {
-         if (part.type === 'same') return acc;
-         const cleanVal = (val) => val.replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, "");
-         if (part.type === 'replace' && cleanVal(part.oldVal) === "" && cleanVal(part.newVal) === "") return acc;
-         if (part.type !== 'replace' && cleanVal(part.value) === "") return acc;
-         return acc + 1;
-      }, 0);
-      if (errorScore < minDiffScore) {
-        minDiffScore = errorScore;
-        bestMatch = answer;
-        bestDiff = diff;
-      }
-    });
-
-    // Bước 3: Quyết định kết quả dựa trên AI (kiểm tra chặt chẽ cả nghĩa lẫn chính tả)
-    if (semanticResult.apiError) {
-        // API LỖI → Cho phép thử lại, không tính là sai
-        setFeedbackState("idle");
-        setAiFeedbackMsg(semanticResult.feedback || "Lỗi kết nối API. Vui lòng thử lại.");
-        // Không tăng mistakes, không lưu lỗi
-        return;
-    }
-    
-    if (semanticResult.isCorrect) {
-        // ĐÚNG → Chấp nhận
-        setFeedbackState("correct");
-        const newCompleted = [...completedSentences];
-        newCompleted[currentSentIndex] = true;
-        setCompletedSentences(newCompleted);
-        setDetailedFeedback(bestDiff);
-        setMatchedAnswer(bestMatch);
-        
-        // Hiển thị feedback nếu có
-        if (semanticResult.feedback && semanticResult.feedback.trim()) {
-            setAiFeedbackMsg(semanticResult.feedback);
-        } else if (minDiffScore === 0) {
-            setAiFeedbackMsg("Chính xác tuyệt đối!");
-        } else {
-            setAiFeedbackMsg("Chính xác!");
-        }
-    } else {
-        // SAI → Từ chối (có thể do nghĩa sai hoặc lỗi chính tả nghiêm trọng)
-        setFeedbackState("incorrect");
-        setDetailedFeedback(bestDiff);
-        setMatchedAnswer(null);
-        setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa chính xác.");
-        statsRef.current.mistakes += 1;
-        // Lưu lỗi chi tiết
-        const newErrors = [...sentenceErrors];
-        if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
-        newErrors[currentSentIndex].push({
-          userAnswer: userInput,
-          correctAnswer: bestMatch,
-          feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Chưa chính xác.",
-          timestamp: new Date().toISOString()
+        const unsubscribe = onAuthStateChanged(auth, (u) => {
+            setUser(u);
+            if (u && u.email && u.emailVerified) {
+                setAppState("home");
+            } else if (u && u.isAnonymous) {
+                setAppState("home");
+            } else if (u && u.email && !u.emailVerified) {
+                // Stay on login, waiting for verification
+            } else {
+                setAppState("login");
+            }
         });
-        setSentenceErrors(newErrors);
-    }
-  };
+        return () => unsubscribe();
+    }, []);
 
-  const finishLesson = async () => {
-      // Lưu lịch sử trước, đợi hoàn thành
-      await handleSaveResult();
-      // Sau đó mới chuyển sang màn hình summary
-      setSummaryStats({ ...statsRef.current });
-      setAppState("summary");
-  };
+    // Fetch History - Fetch ngay khi có user, không chờ vào màn history
+    useEffect(() => {
+        if (user) {
+            console.log('📚 Setting up history listener for user:', user.uid);
+            const q = query(
+                collection(db, 'artifacts', appId, 'users', user.uid, 'history'),
+                orderBy('timestamp', 'desc'),
+                limit(20)
+            );
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                console.log('📚 History updated:', data.length, 'items');
+                setHistoryData(data);
+            }, (error) => {
+                console.error('❌ Error fetching history:', error);
+            });
+            return () => unsubscribe();
+        } else {
+            console.log('📚 No user, clearing history data');
+            setHistoryData([]);
+        }
+    }, [user]);
 
-  const handleNextSentence = () => {
-    if (currentSentIndex < currentCourse.sentences.length - 1) {
-      setCurrentSentIndex(prev => prev + 1);
-      setUserInput("");
-      setFeedbackState("idle");
-      setDetailedFeedback(null);
-      setAiFeedbackMsg("");
-      setMatchedAnswer(null);
-      setShowHint(false);
-      setShowFullAnswer(false);
-      sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
-    } else {
-      finishLesson();
-    }
-  };
+    useEffect(() => {
+        if (appState === "learning") {
+            chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            if (inputRef.current && feedbackState !== 'correct' && feedbackState !== 'checking') inputRef.current.focus();
+        }
+    }, [feedbackState, showHint, showFullAnswer, currentSentIndex, appState]);
 
-  const handleFinishEarly = () => setShowConfirmModal(true);
-  const confirmFinishEarly = () => { setShowConfirmModal(false); finishLesson(); };
-  const cancelFinishEarly = () => setShowConfirmModal(false);
+    // --- AUTH HANDLERS ---
 
-  // --- HISTORY CONTEXT MENU ---
-  const handleHistoryContextMenu = (e, itemId) => {
-      e.preventDefault();
-      setContextMenu({ visible: true, x: e.clientX, y: e.clientY, itemId });
-  };
+    const handleEmailLogin = async (e) => {
+        e.preventDefault();
+        setAuthError("");
+        try {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            if (userCredential.user && !userCredential.user.emailVerified) {
+                await signOut(auth);
+                setAuthError("Email chưa được xác thực. Vui lòng kiểm tra hộp thư.");
+                return;
+            }
+        } catch (err) {
+            if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+                setAuthError("Email hoặc mật khẩu không chính xác.");
+            } else {
+                setAuthError("Đăng nhập thất bại. Vui lòng thử lại.");
+            }
+        }
+    };
 
-  const handleDeleteHistory = async (itemId) => {
-      if (!user || !itemId) return;
-      try {
-          await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'history', itemId));
-          setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
-      } catch (err) {
-          console.error("Lỗi xóa lịch sử:", err);
-      }
-  };
+    const handleRegister = async (e) => {
+        e.preventDefault();
+        setAuthError("");
+        setVerificationSent(false);
+        if (!displayName) { setAuthError("Vui lòng nhập tên hiển thị"); return; }
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            await updateProfile(userCredential.user, { displayName: displayName });
+            await sendEmailVerification(userCredential.user);
+            setVerificationSent(true);
+            await signOut(auth);
+            setAuthMode("login");
+        } catch (err) {
+            console.error(err);
+            if (err.code === 'auth/email-already-in-use') {
+                setAuthError("Email này đã được sử dụng. Vui lòng đăng nhập.");
+            } else if (err.code === 'auth/weak-password') {
+                setAuthError("Mật khẩu quá yếu.");
+            } else {
+                setAuthError("Đăng ký thất bại. Vui lòng thử lại.");
+            }
+        }
+    };
 
-  const closeContextMenu = () => setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
+    const handleResetPassword = async (e) => {
+        e.preventDefault();
+        setAuthError("");
+        setResetEmailSent(false);
+        if (!email) { setAuthError("Vui lòng nhập email."); return; }
+        try {
+            await sendPasswordResetEmail(auth, email);
+            setResetEmailSent(true);
+            setAuthError("");
+        } catch {
+            setAuthError("Lỗi gửi email. Vui lòng thử lại sau.");
+        }
+    };
 
-  const handleShowHint = () => {
-      setShowHint(true);
-      if (!sentenceStatsRef.current.hintUsed) {
-          statsRef.current.hints += 1;
-          sentenceStatsRef.current.hintUsed = true;
-      }
-  };
+    const handleGoogleLogin = async () => {
+        setAuthError("");
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+        } catch (err) {
+            setAuthError("Đăng nhập Google thất bại.");
+            console.error(err);
+        }
+    };
 
-  const handleShowFullAnswer = () => {
-      setShowFullAnswer(true);
-      if (!sentenceStatsRef.current.fullUsed) {
-          statsRef.current.fullAnswers += 1;
-          sentenceStatsRef.current.fullUsed = true;
-      }
-  };
+    const handleGuestLogin = async () => {
+        setAuthError("");
+        try {
+            await signInAnonymously(auth);
+            setAppState("home");
+        } catch {
+            setAuthError("Lỗi đăng nhập khách.");
+        }
+    };
 
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+    const handleLogout = async () => {
+        await signOut(auth);
+        setAppState("login");
+        setEmail("");
+        setPassword("");
+        setDisplayName("");
+        setAuthMode("login");
+        setVerificationSent(false);
+    };
 
-  const handleReturnHome = () => {
-    setAppState("home");
-    setTopicInput("");
-    setFeedbackState("idle");
-    setDetailedFeedback(null);
-    setAiFeedbackMsg("");
-    setMatchedAnswer(null);
-    setSuggestedTopics(getRandomTopics());
-  };
+    // --- APP HANDLERS ---
 
-  const theme = {
-    bg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
-    text: isDarkMode ? "text-slate-200" : "text-slate-700",
-    cardBg: isDarkMode ? "bg-slate-800" : "bg-white",
-    cardBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
-    secondaryText: isDarkMode ? "text-slate-400" : "text-slate-600",
-    inputBg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
-    inputBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
-    inputText: isDarkMode ? "text-slate-200" : "text-gray-900",
-    highlightBg: isDarkMode ? "bg-indigo-900/50" : "bg-indigo-100",
-    highlightText: isDarkMode ? "text-indigo-200" : "text-indigo-950",
-    successBg: isDarkMode ? "bg-green-900/30" : "bg-green-50",
-    successText: isDarkMode ? "text-green-300" : "text-green-800",
-    errorBg: isDarkMode ? "bg-red-900/30" : "bg-red-50",
-    errorText: isDarkMode ? "text-red-300" : "text-red-800",
-  };
+    const handleStartGeneration = async (e) => {
+        e.preventDefault();
+        if (!topicInput.trim()) return;
+        setAppState("generating");
+        statsRef.current = { mistakes: 0, hints: 0, fullAnswers: 0 };
+        sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
 
-  const renderUserDiff = () => {
-    if (!detailedFeedback) return userInput;
-    return (
-      <span className="leading-relaxed break-words">
-        {detailedFeedback.map((part, idx) => {
-          if (part.type === 'same') return <span key={idx} className="text-green-500 dark:text-green-400 mr-1.5">{part.value}</span>;
-          else if (part.type === 'replace') {
-             const style = feedbackState === 'correct' ? "text-yellow-500 dark:text-yellow-400 mr-1.5 underline decoration-dotted" : "text-red-400 dark:text-red-400 line-through decoration-red-500/50 decoration-2 cursor-help mr-1.5";
-             return (
-               <span key={idx} className={`relative group inline-block ${style}`}>
-                 {part.oldVal}
-                 {feedbackState !== 'correct' && (
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl pointer-events-none transform -translate-y-1 group-hover:translate-y-0 duration-200">
-                        Sửa thành: <span className="font-bold text-green-400">{part.newVal}</span>
-                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></span>
-                    </span>
-                 )}
-               </span>
-             );
-          } else if (part.type === 'remove') return feedbackState === 'correct' ? null : <span key={idx} className="text-red-400 dark:text-red-400 line-through mr-1.5 decoration-2 opacity-80">{part.value}</span>;
-          else if (part.type === 'add') return feedbackState === 'correct' ? null : <span key={idx} className="inline-block w-5 h-5 border-b-2 border-dashed border-amber-500 mr-1.5 relative group align-middle"><span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-amber-900 border border-amber-700 text-amber-100 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">Thiếu: {part.value}</span></span>;
-          return null;
-        })}
-      </span>
-    );
-  };
+        // Call appropriate generator based on learningMode
+        const lessonData = learningMode === "listen"
+            ? await generateListenLessonContent(topicInput, lengthOption)
+            : await generateLessonContent(topicInput, lengthOption);
 
-  if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+        if (lessonData?.sentences?.length > 0) {
+            setCurrentCourse(lessonData);
+            setCurrentSentIndex(0);
+            setCompletedSentences(new Array(lessonData.sentences.length).fill(false));
+            setSentenceErrors(Array.from({ length: lessonData.sentences.length }, () => [])); // Khởi tạo array of arrays - mỗi phần tử là mảng riêng biệt
+            setUserInput("");
+            setFeedbackState("idle");
+            setDetailedFeedback(null);
+            setAiFeedbackMsg("");
+            setMatchedAnswer(null);
+            setShowHint(false);
+            setShowFullAnswer(false);
+            setShowConfirmModal(false);
+            setAppState("learning");
+        } else {
+            setAppState("error");
+        }
+    };
 
-  // --- SCREEN: LOGIN & AUTH ---
-  if (appState === "login") {
-      return (
-        <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4 ${theme.text} font-sans`}>
-            <FontStyles />
-            <button onClick={toggleTheme} className={`absolute top-4 right-4 p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
-                {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-            </button>
-            <div className={`max-w-md w-full ${theme.cardBg} p-8 rounded-3xl shadow-2xl border ${theme.cardBorder}`}>
-                <div className="text-center mb-8">
-                    <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
-                        <Sparkles className="w-10 h-10 text-white" />
-                    </div>
-                    <h1 className={`text-3xl font-bold mb-2 ${theme.text}`}>AI English Tutor</h1>
-                    <p className={theme.secondaryText}>Đăng nhập để lưu quá trình học tập</p>
-                </div>
+    const calculateScore = (stats = null) => {
+        const totalSentences = currentCourse?.sentences?.length || 1;
+        const successfullyCompleted = completedSentences.filter(Boolean).length;
+        const currentStats = stats || statsRef.current;
+        // Tính tỷ lệ hoàn thành (0-100)
+        const completionRate = (successfullyCompleted / totalSentences) * 100;
+        // Penalty cho lỗi sai và gợi ý
+        const penalty = (currentStats.mistakes * 3) + (currentStats.fullAnswers * 10);
+        // Điểm = tỷ lệ hoàn thành - penalty, tối thiểu 0
+        return Math.max(0, Math.round(completionRate - penalty));
+    };
 
-                {verificationSent && (
-                    <div className="mb-6 p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
-                        <CheckCircle className="w-5 h-5 flex-shrink-0" />
-                        <span>Link xác thực đã gửi! Vui lòng kiểm tra email.</span>
-                    </div>
-                )}
+    const handleSaveResult = async () => {
+        console.log('💾 handleSaveResult called');
+        console.log('  - User:', user ? `${user.uid} (${user.email || 'anonymous'})` : 'NULL');
+        console.log('  - Course:', currentCourse ? currentCourse.title : 'NULL');
 
-                {authMode !== 'forgot' && (
-                    <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'} rounded-lg p-1 mb-6`}>
-                        <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : '!bg-white text-indigo-600 hover:text-indigo-800')}`}>Đăng nhập</button>
-                        <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : '!bg-white !text-indigo-600 hover:!text-indigo-800')}`}>Đăng ký</button>
-                    </div>
-                )}
+        if (!user || !currentCourse) {
+            console.warn('⚠️ Cannot save history - User:', !!user, 'Course:', !!currentCourse);
+            return;
+        }
 
-                {authMode === 'forgot' ? (
-                    <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in">
-                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email đăng ký</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
-                        {resetEmailSent ? (<div className="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Đã gửi link khôi phục!</div>) : (authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>)}
-                        <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2`}><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
-                        <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'} text-sm underline mt-2 font-semibold`}>Quay lại Đăng nhập</button>
-                    </form>
-                ) : (
-                    <form onSubmit={authMode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4 animate-in fade-in">
-                        {authMode === 'register' && (<div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Tên hiển thị</label><input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="VD: Minh Tú" className={`w-full p-4 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div>)}
-                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
-                        <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Mật khẩu</label><div className="relative"><Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
-                        {authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
-                        {authMode === 'login' && (<div className="text-right"><button type="button" onClick={() => { setAuthMode('forgot'); setAuthError(""); }} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border border-indigo-200'}`}>Quên mật khẩu?</button></div>)}
-                        <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95`}>{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</button>
-                    </form>
-                )}
+        setIsSavingHistory(true);
+        const finalScore = calculateScore();
+        const successfullyCompleted = completedSentences.filter(Boolean).length;
+        const failed = completedSentences.length - successfullyCompleted;
 
-                {authMode !== 'forgot' && (
-                    <div className="mt-6 flex flex-col gap-3 animate-in fade-in">
-                        <button onClick={handleGoogleLogin} className="w-full bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"><span className="text-lg font-bold">G</span> Tiếp tục với Google</button>
-                        <button onClick={handleGuestLogin} className={`w-full py-3 rounded-xl font-bold transition-all ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white border border-slate-600' : 'bg-gradient-to-br from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 text-slate-700 border border-slate-300 hover:border-slate-400'}`}>Dùng thử không cần tài khoản</button>
-                    </div>
-                )}
-            </div>
-        </div>
-      );
-  }
+        const historyDoc = {
+            topic: currentCourse.title,
+            score: finalScore,
+            totalSentences: currentCourse.sentences.length,
+            completedCorrectly: successfullyCompleted,
+            failedSentences: failed,
+            timestamp: serverTimestamp(),
+            mistakes: statsRef.current.mistakes,
+            hints: statsRef.current.hints,
+            fullAnswers: statsRef.current.fullAnswers,
+            level: lengthOption,
+            courseData: currentCourse,
+            completedStatus: completedSentences,
+            // Chuyển đổi nested arrays thành object với key là index
+            sentenceErrors: sentenceErrors.reduce((acc, errors, idx) => {
+                if (errors && errors.length > 0) {
+                    acc[idx] = errors;
+                }
+                return acc;
+            }, {})
+        };
 
-  // --- SCREEN: HISTORY ---
-  if (appState === "history") {
-      return (
-        <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 font-sans`} onClick={closeContextMenu}>
-            <FontStyles />
-            <header className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
-                <button onClick={() => setAppState("home")} className={`flex items-center gap-2 ${isDarkMode ? theme.secondaryText + ' hover:' + theme.text : 'text-indigo-600 hover:text-indigo-700'} font-medium transition-colors`}><ArrowRight className="w-5 h-5 rotate-180" /> Quay lại</button>
-                <div className="text-center">
-                    <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
-                    {user && <p className="text-xs text-indigo-500 font-medium mt-1">{historyData.length} bài học</p>}
-                </div>
-                <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
+        console.log('💾 Saving history doc:', {
+            topic: historyDoc.topic,
+            score: historyDoc.score,
+            totalSentences: historyDoc.totalSentences,
+            path: `artifacts/${appId}/users/${user.uid}/history`
+        });
+
+        try {
+            const docRef = await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'history'), historyDoc);
+            console.log('✅ History saved successfully with ID:', docRef.id);
+            console.log('   Path:', docRef.path);
+        } catch (e) {
+            console.error("❌ Error saving history:", e);
+            console.error("   Error code:", e.code);
+            console.error("   Error message:", e.message);
+        } finally {
+            setIsSavingHistory(false);
+        }
+    };
+
+    const handleCheck = async (e) => {
+        e.preventDefault();
+        if (!userInput.trim()) return;
+        const currentSent = currentCourse.sentences[currentSentIndex];
+
+        // Bước 1: Kiểm tra semantic với AI (kiểm tra nghĩa + chính tả)
+        setFeedbackState("checking");
+        const vnContext = currentSent.segments.map(s => s.text).join("");
+        const semanticResult = await checkSemanticMatch(userInput, vnContext, currentSent.acceptableAnswers);
+
+        // Bước 2: Tìm đáp án gần nhất để hiển thị diff
+        let bestMatch = null;
+        let minDiffScore = Infinity;
+        let bestDiff = null;
+
+        currentSent.acceptableAnswers.forEach(answer => {
+            const diff = getWordDiff(userInput, answer);
+            const errorScore = diff.reduce((acc, part) => {
+                if (part.type === 'same') return acc;
+                const cleanVal = (val) => val.replace(/[.,/#!$%^&*;:{}=\-_`~()?"']/g, "");
+                if (part.type === 'replace' && cleanVal(part.oldVal) === "" && cleanVal(part.newVal) === "") return acc;
+                if (part.type !== 'replace' && cleanVal(part.value) === "") return acc;
+                return acc + 1;
+            }, 0);
+            if (errorScore < minDiffScore) {
+                minDiffScore = errorScore;
+                bestMatch = answer;
+                bestDiff = diff;
+            }
+        });
+
+        // Bước 3: Quyết định kết quả dựa trên AI (kiểm tra chặt chẽ cả nghĩa lẫn chính tả)
+        if (semanticResult.apiError) {
+            // API LỖI → Cho phép thử lại, không tính là sai
+            setFeedbackState("idle");
+            setAiFeedbackMsg(semanticResult.feedback || "Lỗi kết nối API. Vui lòng thử lại.");
+            // Không tăng mistakes, không lưu lỗi
+            return;
+        }
+
+        if (semanticResult.isCorrect) {
+            // ĐÚNG → Chấp nhận
+            setFeedbackState("correct");
+            const newCompleted = [...completedSentences];
+            newCompleted[currentSentIndex] = true;
+            setCompletedSentences(newCompleted);
+            setDetailedFeedback(bestDiff);
+            setMatchedAnswer(bestMatch);
+
+            // Hiển thị feedback nếu có
+            if (semanticResult.feedback && semanticResult.feedback.trim()) {
+                setAiFeedbackMsg(semanticResult.feedback);
+            } else if (minDiffScore === 0) {
+                setAiFeedbackMsg("Chính xác tuyệt đối!");
+            } else {
+                setAiFeedbackMsg("Chính xác!");
+            }
+        } else {
+            // SAI → Từ chối (có thể do nghĩa sai hoặc lỗi chính tả nghiêm trọng)
+            setFeedbackState("incorrect");
+            setDetailedFeedback(bestDiff);
+            setMatchedAnswer(null);
+            setAiFeedbackMsg(typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Câu trả lời chưa chính xác.");
+            statsRef.current.mistakes += 1;
+            // Lưu lỗi chi tiết
+            const newErrors = [...sentenceErrors];
+            if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
+            newErrors[currentSentIndex].push({
+                userAnswer: userInput,
+                correctAnswer: bestMatch,
+                feedback: typeof semanticResult.feedback === 'string' ? semanticResult.feedback : "Chưa chính xác.",
+                timestamp: new Date().toISOString()
+            });
+            setSentenceErrors(newErrors);
+        }
+    };
+
+    const finishLesson = async () => {
+        // Lưu lịch sử trước, đợi hoàn thành
+        await handleSaveResult();
+        // Sau đó mới chuyển sang màn hình summary
+        setSummaryStats({ ...statsRef.current });
+        setAppState("summary");
+    };
+
+    const handleNextSentence = () => {
+        if (currentSentIndex < currentCourse.sentences.length - 1) {
+            setCurrentSentIndex(prev => prev + 1);
+            setUserInput("");
+            setFeedbackState("idle");
+            setDetailedFeedback(null);
+            setAiFeedbackMsg("");
+            setMatchedAnswer(null);
+            setShowHint(false);
+            setShowFullAnswer(false);
+            sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
+        } else {
+            finishLesson();
+        }
+    };
+
+    const handleFinishEarly = () => setShowConfirmModal(true);
+    const confirmFinishEarly = () => { setShowConfirmModal(false); finishLesson(); };
+    const cancelFinishEarly = () => setShowConfirmModal(false);
+
+    // --- HISTORY CONTEXT MENU ---
+    const handleHistoryContextMenu = (e, itemId) => {
+        e.preventDefault();
+        setContextMenu({ visible: true, x: e.clientX, y: e.clientY, itemId });
+    };
+
+    const handleDeleteHistory = async (itemId) => {
+        if (!user || !itemId) return;
+        try {
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'history', itemId));
+            setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
+        } catch (err) {
+            console.error("Lỗi xóa lịch sử:", err);
+        }
+    };
+
+    const closeContextMenu = () => setContextMenu({ visible: false, x: 0, y: 0, itemId: null });
+
+    const handleShowHint = () => {
+        setShowHint(true);
+        if (!sentenceStatsRef.current.hintUsed) {
+            statsRef.current.hints += 1;
+            sentenceStatsRef.current.hintUsed = true;
+        }
+    };
+
+    const handleShowFullAnswer = () => {
+        setShowFullAnswer(true);
+        if (!sentenceStatsRef.current.fullUsed) {
+            statsRef.current.fullAnswers += 1;
+            sentenceStatsRef.current.fullUsed = true;
+        }
+    };
+
+    const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+    // --- LISTEN MODE AUDIO HANDLERS ---
+    const handlePlayAudio = () => {
+        if (!currentCourse || learningMode !== "listen") return;
+
+        const currentSent = currentCourse.sentences[currentSentIndex];
+        const text = currentSent.english;
+
+        // Stop any currently playing audio
+        if (isPlaying) {
+            window.speechSynthesis.cancel();
+            setIsPlaying(false);
+            return;
+        }
+
+        // Create new utterance
+        const newUtterance = new SpeechSynthesisUtterance(text);
+        newUtterance.lang = 'en-US';
+        newUtterance.rate = playbackSpeed * 0.9; // Slightly slower for dictation
+
+        newUtterance.onstart = () => setIsPlaying(true);
+        newUtterance.onend = () => setIsPlaying(false);
+        newUtterance.onerror = () => setIsPlaying(false);
+
+        setUtterance(newUtterance);
+        window.speechSynthesis.speak(newUtterance);
+    };
+
+    const handleReplayAudio = () => {
+        window.speechSynthesis.cancel();
+        setIsPlaying(false);
+        setTimeout(() => handlePlayAudio(), 100);
+    };
+
+    const handleSpeedChange = (speed) => {
+        setPlaybackSpeed(speed);
+        if (isPlaying) {
+            window.speechSynthesis.cancel();
+            setIsPlaying(false);
+        }
+    };
+
+    const handleReturnHome = () => {
+        setAppState("home");
+        setTopicInput("");
+        setFeedbackState("idle");
+        setDetailedFeedback(null);
+        setAiFeedbackMsg("");
+        setMatchedAnswer(null);
+        setSuggestedTopics(getRandomTopics());
+    };
+
+    const theme = {
+        bg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
+        text: isDarkMode ? "text-slate-200" : "text-slate-700",
+        cardBg: isDarkMode ? "bg-slate-800" : "bg-white",
+        cardBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
+        secondaryText: isDarkMode ? "text-slate-400" : "text-slate-600",
+        inputBg: isDarkMode ? "bg-slate-900" : "bg-gray-50",
+        inputBorder: isDarkMode ? "border-slate-700" : "border-gray-300",
+        inputText: isDarkMode ? "text-slate-200" : "text-gray-900",
+        highlightBg: isDarkMode ? "bg-indigo-900/50" : "bg-indigo-100",
+        highlightText: isDarkMode ? "text-indigo-200" : "text-indigo-950",
+        successBg: isDarkMode ? "bg-green-900/30" : "bg-green-50",
+        successText: isDarkMode ? "text-green-300" : "text-green-800",
+        errorBg: isDarkMode ? "bg-red-900/30" : "bg-red-50",
+        errorText: isDarkMode ? "text-red-300" : "text-red-800",
+    };
+
+    const renderUserDiff = () => {
+        if (!detailedFeedback) return userInput;
+        return (
+            <span className="leading-relaxed break-words">
+                {detailedFeedback.map((part, idx) => {
+                    if (part.type === 'same') return <span key={idx} className="text-green-500 dark:text-green-400 mr-1.5">{part.value}</span>;
+                    else if (part.type === 'replace') {
+                        const style = feedbackState === 'correct' ? "text-yellow-500 dark:text-yellow-400 mr-1.5 underline decoration-dotted" : "text-red-400 dark:text-red-400 line-through decoration-red-500/50 decoration-2 cursor-help mr-1.5";
+                        return (
+                            <span key={idx} className={`relative group inline-block ${style}`}>
+                                {part.oldVal}
+                                {feedbackState !== 'correct' && (
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-slate-900 border border-slate-700 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl pointer-events-none transform -translate-y-1 group-hover:translate-y-0 duration-200">
+                                        Sửa thành: <span className="font-bold text-green-400">{part.newVal}</span>
+                                        <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900"></span>
+                                    </span>
+                                )}
+                            </span>
+                        );
+                    } else if (part.type === 'remove') return feedbackState === 'correct' ? null : <span key={idx} className="text-red-400 dark:text-red-400 line-through mr-1.5 decoration-2 opacity-80">{part.value}</span>;
+                    else if (part.type === 'add') return feedbackState === 'correct' ? null : <span key={idx} className="inline-block w-5 h-5 border-b-2 border-dashed border-amber-500 mr-1.5 relative group align-middle"><span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1.5 bg-amber-900 border border-amber-700 text-amber-100 text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 shadow-xl">Thiếu: {part.value}</span></span>;
+                    return null;
+                })}
+            </span>
+        );
+    };
+
+    if (isAuthChecking) return <div className="min-h-screen flex items-center justify-center bg-slate-900 text-white"><Loader2 className="w-8 h-8 animate-spin" /></div>;
+
+    // --- SCREEN: LOGIN & AUTH ---
+    if (appState === "login") {
+        return (
+            <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4 ${theme.text} font-sans`}>
+                <FontStyles />
+                <button onClick={toggleTheme} className={`absolute top-4 right-4 p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                 </button>
-            </header>
-            <div className="max-w-4xl mx-auto space-y-4 pb-10">
-                {!user ? (
-                    <div className={`text-center py-20 ${theme.secondaryText}`}>
-                        <p className="mb-4">Vui lòng đăng nhập để xem lịch sử</p>
-                        <button onClick={() => setAppState("login")} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95`}>
-                            Đăng nhập
+                <div className={`max-w-md w-full ${theme.cardBg} p-8 rounded-3xl shadow-2xl border ${theme.cardBorder}`}>
+                    <div className="text-center mb-8">
+                        <div className="w-20 h-20 bg-indigo-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-indigo-500/30">
+                            <Sparkles className="w-10 h-10 text-white" />
+                        </div>
+                        <h1 className={`text-3xl font-bold mb-2 ${theme.text}`}>AI English Tutor</h1>
+                        <p className={theme.secondaryText}>Đăng nhập để lưu quá trình học tập</p>
+                    </div>
+
+                    {verificationSent && (
+                        <div className="mb-6 p-4 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                            <span>Link xác thực đã gửi! Vui lòng kiểm tra email.</span>
+                        </div>
+                    )}
+
+                    {authMode !== 'forgot' && (
+                        <div className={`flex ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-r from-indigo-100/50 to-purple-100/50'} rounded-lg p-1 mb-6`}>
+                            <button onClick={() => { setAuthMode('login'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'login' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : '!bg-white text-indigo-600 hover:text-indigo-800')}`}>Đăng nhập</button>
+                            <button onClick={() => { setAuthMode('register'); setAuthError(""); }} className={`flex-1 py-2.5 rounded-md text-sm font-bold transition-all ${authMode === 'register' ? (isDarkMode ? 'bg-slate-600 text-white shadow-md' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md') : (isDarkMode ? 'text-slate-400 hover:text-white' : '!bg-white !text-indigo-600 hover:!text-indigo-800')}`}>Đăng ký</button>
+                        </div>
+                    )}
+
+                    {authMode === 'forgot' ? (
+                        <form onSubmit={handleResetPassword} className="space-y-4 animate-in fade-in">
+                            <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email đăng ký</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
+                            {resetEmailSent ? (<div className="p-3 bg-green-500/20 border border-green-500/50 rounded-xl text-green-400 text-sm flex items-center gap-2"><CheckCircle className="w-4 h-4" /> Đã gửi link khôi phục!</div>) : (authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>)}
+                            <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2`}><KeyRound className="w-5 h-5" /> Gửi link khôi phục</button>
+                            <button type="button" onClick={() => { setAuthMode('login'); setAuthError(""); setResetEmailSent(false); }} className={`w-full ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-indigo-600 hover:text-indigo-800'} text-sm underline mt-2 font-semibold`}>Quay lại Đăng nhập</button>
+                        </form>
+                    ) : (
+                        <form onSubmit={authMode === 'login' ? handleEmailLogin : handleRegister} className="space-y-4 animate-in fade-in">
+                            {authMode === 'register' && (<div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Tên hiển thị</label><input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="VD: Minh Tú" className={`w-full p-4 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div>)}
+                            <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Email</label><div className="relative"><Mail className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
+                            <div className="text-left"><label className={`text-xs font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-600'} uppercase ml-1`}>Mật khẩu</label><div className="relative"><Lock className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} /><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className={`w-full p-4 pl-12 rounded-xl ${isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mt-1`} required /></div></div>
+                            {authError && <p className="text-red-500 text-sm bg-red-500/10 p-2 rounded border border-red-500/20">{authError}</p>}
+                            {authMode === 'login' && (<div className="text-right"><button type="button" onClick={() => { setAuthMode('forgot'); setAuthError(""); }} className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-700 border border-indigo-200'}`}>Quên mật khẩu?</button></div>)}
+                            <button type="submit" className={`w-full ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700'} text-white font-bold py-4 rounded-xl transition-all shadow-lg active:scale-95`}>{authMode === 'login' ? 'Đăng nhập' : 'Đăng ký tài khoản'}</button>
+                        </form>
+                    )}
+
+                    {authMode !== 'forgot' && (
+                        <div className="mt-6 flex flex-col gap-3 animate-in fade-in">
+                            <button onClick={handleGoogleLogin} className="w-full bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg"><span className="text-lg font-bold">G</span> Tiếp tục với Google</button>
+                            <button onClick={handleGuestLogin} className={`w-full py-3 rounded-xl font-bold transition-all ${isDarkMode ? 'bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-white border border-slate-600' : 'bg-gradient-to-br from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 text-slate-700 border border-slate-300 hover:border-slate-400'}`}>Dùng thử không cần tài khoản</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    // --- SCREEN: HISTORY ---
+    if (appState === "history") {
+        return (
+            <div className={`min-h-screen ${theme.bg} p-4 transition-colors duration-300 font-sans`} onClick={closeContextMenu}>
+                <FontStyles />
+                <header className="max-w-4xl mx-auto flex items-center justify-between mb-8 pt-4">
+                    <button onClick={() => setAppState("home")} className={`flex items-center gap-2 ${isDarkMode ? theme.secondaryText + ' hover:' + theme.text : 'text-indigo-600 hover:text-indigo-700'} font-medium transition-colors`}><ArrowRight className="w-5 h-5 rotate-180" /> Quay lại</button>
+                    <div className="text-center">
+                        <h1 className={`text-xl font-bold ${theme.text}`}>Lịch sử học tập</h1>
+                        {user && <p className="text-xs text-indigo-500 font-medium mt-1">{historyData.length} bài học</p>}
+                    </div>
+                    <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
+                        {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                    </button>
+                </header>
+
+                {/* Filter Tabs */}
+                {user && historyData.length > 0 && (
+                    <div className="max-w-4xl mx-auto flex justify-center gap-2 mb-6">
+                        {[
+                            { id: 'all', label: 'Tất cả', icon: null },
+                            { id: 'write', label: 'Dịch văn', icon: <Edit3 className="w-4 h-4" /> },
+                            { id: 'listen', label: 'Nghe', icon: <Headphones className="w-4 h-4" /> }
+                        ].map(filter => (
+                            <button
+                                key={filter.id}
+                                onClick={() => setHistoryFilter(filter.id)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all ${historyFilter === filter.id
+                                    ? (isDarkMode ? 'bg-indigo-600 text-white shadow-lg' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg')
+                                    : (isDarkMode ? `${theme.bg} ${theme.secondaryText} border border-slate-700 hover:border-indigo-500` : 'bg-white text-slate-700 border border-slate-300 hover:border-indigo-400')
+                                    }`}
+                            >
+                                {filter.icon} {filter.label}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                <div className="max-w-4xl mx-auto space-y-4 pb-10">
+                    {!user ? (
+                        <div className={`text-center py-20 ${theme.secondaryText}`}>
+                            <p className="mb-4">Vui lòng đăng nhập để xem lịch sử</p>
+                            <button onClick={() => setAppState("login")} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-all active:scale-95`}>
+                                Đăng nhập
+                            </button>
+                        </div>
+                    ) : historyData.filter(item => historyFilter === 'all' || (item.courseData && item.courseData.learningMode === historyFilter) || (!item.courseData?.learningMode && historyFilter === 'write')).length === 0 ? (
+                        <div className={`text-center py-20 ${theme.secondaryText}`}>
+                            <p className="mb-2">Không có bài học nào.</p>
+                            <p className="text-xs opacity-70">Hoàn thành một bài học để xem lịch sử tại đây</p>
+                        </div>
+                    ) : (
+                        historyData
+                            .filter(item => historyFilter === 'all' || (item.courseData && item.courseData.learningMode === historyFilter) || (!item.courseData?.learningMode && historyFilter === 'write'))
+                            .map((item) => (
+                                <div
+                                    key={item.id}
+                                    onClick={() => setSelectedHistoryItem(item)}
+                                    onContextMenu={(e) => handleHistoryContextMenu(e, item.id)}
+                                    className={`${theme.cardBg} p-5 rounded-2xl border ${theme.cardBorder} flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer group`}
+                                >
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <h3 className={`font-bold ${theme.text} text-lg group-hover:text-indigo-500 transition-colors`}>{item.topic}</h3>
+                                            {/* Mode Badge */}
+                                            <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${(item.courseData?.learningMode === 'listen')
+                                                ? 'bg-purple-500/20 text-purple-500 border border-purple-500/30'
+                                                : 'bg-blue-500/20 text-blue-500 border border-blue-500/30'
+                                                }`}>
+                                                {(item.courseData?.learningMode === 'listen') ? <Headphones className="w-3 h-3" /> : <Edit3 className="w-3 h-3" />}
+                                                {(item.courseData?.learningMode === 'listen') ? 'Nghe' : 'Dịch'}
+                                            </span>
+                                        </div>
+                                        <div className={`flex items-center gap-4 text-xs ${theme.secondaryText}`}>
+                                            <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {item.timestamp && typeof item.timestamp.toDate === 'function' ? item.timestamp.toDate().toLocaleDateString('vi-VN') : 'Vừa xong'}</span>
+                                            <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded uppercase font-bold">{item.level || 'medium'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-6">
+                                        <div className="text-right hidden sm:block">
+                                            <div className={`text-sm ${theme.secondaryText}`}>Điểm số</div>
+                                            <div className={`font-bold text-lg ${item.score >= 80 ? 'text-green-500' : item.score >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{Math.round(item.score)}</div>
+                                        </div>
+                                        <ChevronRight className={`w-5 h-5 ${theme.secondaryText}`} />
+                                    </div>
+                                </div>
+                            ))
+                    )}
+                </div>
+                {/* Context Menu */}
+                {contextMenu.visible && (
+                    <div
+                        className={`fixed z-50 ${theme.cardBg} border-2 ${theme.cardBorder} rounded-xl shadow-2xl overflow-hidden`}
+                        style={{ top: contextMenu.y, left: contextMenu.x }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            onClick={() => handleDeleteHistory(contextMenu.itemId)}
+                            className="px-5 py-3 text-red-500 hover:bg-red-500/10 flex items-center gap-3 text-sm font-bold whitespace-nowrap"
+                        >
+                            <X className="w-4 h-4" />
+                            Xóa bài học này
                         </button>
                     </div>
-                ) : historyData.length === 0 ? (
-                    <div className={`text-center py-20 ${theme.secondaryText}`}>
-                        <p className="mb-2">Bạn chưa có bài học nào.</p>
-                        <p className="text-xs opacity-70">Hoàn thành một bài học để xem lịch sử tại đây</p>
-                    </div>
-                ) : (
-                    historyData.map((item) => (
-                        <div
-                            key={item.id}
-                            onClick={() => setSelectedHistoryItem(item)}
-                            onContextMenu={(e) => handleHistoryContextMenu(e, item.id)}
-                            className={`${theme.cardBg} p-5 rounded-2xl border ${theme.cardBorder} flex items-center justify-between hover:scale-[1.01] transition-transform cursor-pointer group`}
-                        >
-                            <div className="flex-1">
-                                <h3 className={`font-bold ${theme.text} text-lg mb-1 group-hover:text-indigo-500 transition-colors`}>{item.topic}</h3>
-                                <div className={`flex items-center gap-4 text-xs ${theme.secondaryText}`}>
-                                    <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {item.timestamp && typeof item.timestamp.toDate === 'function' ? item.timestamp.toDate().toLocaleDateString('vi-VN') : 'Vừa xong'}</span>
-                                    <span className="flex items-center gap-1 bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded uppercase font-bold">{item.level || 'medium'}</span>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-6">
-                                <div className="text-right hidden sm:block">
-                                    <div className={`text-sm ${theme.secondaryText}`}>Điểm số</div>
-                                    <div className={`font-bold text-lg ${item.score >= 80 ? 'text-green-500' : item.score >= 50 ? 'text-yellow-500' : 'text-red-500'}`}>{Math.round(item.score)}</div>
-                                </div>
-                                <ChevronRight className={`w-5 h-5 ${theme.secondaryText}`} />
-                            </div>
-                        </div>
-                    ))
                 )}
-            </div>
-            {/* Context Menu */}
-            {contextMenu.visible && (
-                <div
-                    className={`fixed z-50 ${theme.cardBg} border-2 ${theme.cardBorder} rounded-xl shadow-2xl overflow-hidden`}
-                    style={{ top: contextMenu.y, left: contextMenu.x }}
-                    onClick={(e) => e.stopPropagation()}
-                >
-                    <button
-                        onClick={() => handleDeleteHistory(contextMenu.itemId)}
-                        className="px-5 py-3 text-red-500 hover:bg-red-500/10 flex items-center gap-3 text-sm font-bold whitespace-nowrap"
-                    >
-                        <X className="w-4 h-4" />
-                        Xóa bài học này
-                    </button>
-                </div>
-            )}
-            {selectedHistoryItem && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-sm" onClick={() => setSelectedHistoryItem(null)}>
-                    <div className={`${theme.cardBg} w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
-                        <div className={`p-6 border-b ${theme.cardBorder} flex justify-between items-center bg-indigo-600`}>
-                            <h2 className="text-xl font-bold text-white truncate pr-4">{selectedHistoryItem.topic}</h2>
-                            <button onClick={() => setSelectedHistoryItem(null)} className="text-white/80 hover:text-white"><X className="w-6 h-6" /></button>
-                        </div>
-                        <div className={`flex-1 overflow-y-auto p-6 ${theme.bg} custom-scrollbar`}>
-                            {selectedHistoryItem.courseData && selectedHistoryItem.courseData.sentences ? (
-                                <div className="space-y-4">
-                                    {selectedHistoryItem.courseData.sentences.map((sent, idx) => {
-                                        const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
-                                        const errorDetails = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
-                                        const errorCount = errorDetails && Array.isArray(errorDetails) ? errorDetails.length : (errorDetails ? 1 : 0);
-                                        const hasAttempted = isCompleted || errorCount > 0;
-                                        const finalStatus = isCompleted ? 'correct' : (hasAttempted ? 'incorrect' : 'skipped');
-                                        
-                                        return (
-                                            <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${finalStatus === 'correct' ? 'border-green-500/50' : finalStatus === 'incorrect' ? 'border-red-500/50' : 'border-gray-500/50'}`}>
-                                                <div className="flex gap-3">
-                                                    <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${finalStatus === 'correct' ? 'bg-green-500 text-white' : finalStatus === 'incorrect' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
-                                                        {finalStatus === 'correct' ? '✓' : finalStatus === 'incorrect' ? '✗' : '−'}
-                                                    </span>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                                            <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
-                                                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${finalStatus === 'correct' ? 'bg-green-500/20 text-green-500' : finalStatus === 'incorrect' ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/20 text-gray-500'}`}>
-                                                                {finalStatus === 'correct' ? 'Đúng' : finalStatus === 'incorrect' ? 'Sai' : 'Chưa làm'}
-                                                            </span>
-                                                            {errorCount > 0 && (
-                                                                <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">
-                                                                    {errorCount} lần sai
+                {selectedHistoryItem && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in fade-in backdrop-blur-sm" onClick={() => setSelectedHistoryItem(null)}>
+                        <div className={`${theme.cardBg} w-full max-w-3xl max-h-[85vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col`} onClick={e => e.stopPropagation()}>
+                            <div className={`p-6 border-b ${theme.cardBorder} flex justify-between items-center bg-indigo-600`}>
+                                <h2 className="text-xl font-bold text-white truncate pr-4">{selectedHistoryItem.topic}</h2>
+                                <button onClick={() => setSelectedHistoryItem(null)} className="text-white/80 hover:text-white"><X className="w-6 h-6" /></button>
+                            </div>
+                            <div className={`flex-1 overflow-y-auto p-6 ${theme.bg} custom-scrollbar`}>
+                                {selectedHistoryItem.courseData && selectedHistoryItem.courseData.sentences ? (
+                                    <div className="space-y-4">
+                                        {selectedHistoryItem.courseData.sentences.map((sent, idx) => {
+                                            const isCompleted = selectedHistoryItem.completedStatus && selectedHistoryItem.completedStatus[idx];
+                                            const errorDetails = selectedHistoryItem.sentenceErrors && selectedHistoryItem.sentenceErrors[idx];
+                                            const errorCount = errorDetails && Array.isArray(errorDetails) ? errorDetails.length : (errorDetails ? 1 : 0);
+                                            const hasAttempted = isCompleted || errorCount > 0;
+                                            const finalStatus = isCompleted ? 'correct' : (hasAttempted ? 'incorrect' : 'skipped');
+
+                                            return (
+                                                <div key={idx} className={`${theme.cardBg} p-4 rounded-xl border-2 transition-all ${finalStatus === 'correct' ? 'border-green-500/50' : finalStatus === 'incorrect' ? 'border-red-500/50' : 'border-gray-500/50'}`}>
+                                                    <div className="flex gap-3">
+                                                        <span className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold ${finalStatus === 'correct' ? 'bg-green-500 text-white' : finalStatus === 'incorrect' ? 'bg-red-500 text-white' : 'bg-gray-500 text-white'}`}>
+                                                            {finalStatus === 'correct' ? '✓' : finalStatus === 'incorrect' ? '✗' : '−'}
+                                                        </span>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                                                <span className="text-xs font-bold text-indigo-400">Câu {idx + 1}</span>
+                                                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${finalStatus === 'correct' ? 'bg-green-500/20 text-green-500' : finalStatus === 'incorrect' ? 'bg-red-500/20 text-red-500' : 'bg-gray-500/20 text-gray-500'}`}>
+                                                                    {finalStatus === 'correct' ? 'Đúng' : finalStatus === 'incorrect' ? 'Sai' : 'Chưa làm'}
                                                                 </span>
+                                                                {errorCount > 0 && (
+                                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500 font-bold">
+                                                                        {errorCount} lần sai
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <p className={`font-medium ${theme.text} mb-2 text-base`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
+                                                            <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'} p-3 rounded-lg mb-2`}>
+                                                                <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
+                                                                <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
+                                                            </div>
+                                                            {errorDetails && errorCount > 0 && (
+                                                                <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
+                                                                    {Array.isArray(errorDetails) && errorDetails.length > 0 ? (
+                                                                        <div className="space-y-3">
+                                                                            <p className="text-xs font-bold text-red-400 mb-2">Chi tiết các lần sai ({errorDetails.length} lần):</p>
+                                                                            {errorDetails.map((error, errIdx) => (
+                                                                                <div key={errIdx} className={`${isDarkMode ? 'bg-red-900/30' : 'bg-red-100'} p-2 rounded border ${isDarkMode ? 'border-red-800' : 'border-red-300'}`}>
+                                                                                    <p className="text-xs font-bold text-orange-400 mb-1">Lần {errIdx + 1}:</p>
+                                                                                    <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-1`}>"{error.userAnswer || "Không trả lời"}"</p>
+                                                                                    {error.feedback && (
+                                                                                        <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>💡 {error.feedback}</p>
+                                                                                    )}
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                    ) : errorDetails.userAnswer ? (
+                                                                        <>
+                                                                            <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
+                                                                            <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2 font-medium`}>{errorDetails.userAnswer}</p>
+                                                                            {errorDetails.feedback && (
+                                                                                <>
+                                                                                    <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
+                                                                                    <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetails.feedback}</p>
+                                                                                </>
+                                                                            )}
+                                                                        </>
+                                                                    ) : null}
+                                                                </div>
+                                                            )}
+                                                            {finalStatus === 'skipped' && (
+                                                                <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100'} p-3 rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
+                                                                    <p className={`text-xs italic ${theme.secondaryText}`}>Câu này chưa được làm (bỏ qua)</p>
+                                                                </div>
                                                             )}
                                                         </div>
-                                                        <p className={`font-medium ${theme.text} mb-2 text-base`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
-                                                        <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'} p-3 rounded-lg mb-2`}>
-                                                            <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
-                                                            <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
-                                                        </div>
-                                                        {errorDetails && errorCount > 0 && (
-                                                            <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
-                                                                {Array.isArray(errorDetails) && errorDetails.length > 0 ? (
-                                                                    <div className="space-y-3">
-                                                                        <p className="text-xs font-bold text-red-400 mb-2">Chi tiết các lần sai ({errorDetails.length} lần):</p>
-                                                                        {errorDetails.map((error, errIdx) => (
-                                                                            <div key={errIdx} className={`${isDarkMode ? 'bg-red-900/30' : 'bg-red-100'} p-2 rounded border ${isDarkMode ? 'border-red-800' : 'border-red-300'}`}>
-                                                                                <p className="text-xs font-bold text-orange-400 mb-1">Lần {errIdx + 1}:</p>
-                                                                                <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-1`}>"{error.userAnswer || "Không trả lời"}"</p>
-                                                                                {error.feedback && (
-                                                                                    <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>💡 {error.feedback}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        ))}
-                                                                    </div>
-                                                                ) : errorDetails.userAnswer ? (
-                                                                    <>
-                                                                        <p className="text-xs font-bold text-red-400 mb-1">Câu trả lời của bạn:</p>
-                                                                        <p className={`${isDarkMode ? 'text-red-300' : 'text-red-700'} italic text-sm mb-2 font-medium`}>{errorDetails.userAnswer}</p>
-                                                                        {errorDetails.feedback && (
-                                                                            <>
-                                                                                <p className="text-xs font-bold text-orange-400 mb-1">Lỗi sai:</p>
-                                                                                <p className={`${isDarkMode ? 'text-orange-300' : 'text-orange-700'} text-xs`}>{errorDetails.feedback}</p>
-                                                                            </>
-                                                                        )}
-                                                                    </>
-                                                                ) : null}
-                                                            </div>
-                                                        )}
-                                                        {finalStatus === 'skipped' && (
-                                                            <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-gray-100'} p-3 rounded-lg border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
-                                                                <p className={`text-xs italic ${theme.secondaryText}`}>Câu này chưa được làm (bỏ qua)</p>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
-                                            </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (<p className={`${theme.secondaryText} text-center py-10`}>Chi tiết bài học không khả dụng cho mục này.</p>)}
+                            </div>
+                            <div className={`p-4 border-t ${theme.cardBorder} ${theme.cardBg} flex justify-between items-center text-sm`}>
+                                <div className="flex gap-4">
+                                    <span className={theme.text}>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
+                                    <span className="text-green-500 font-bold">✓ {selectedHistoryItem.completedCorrectly || 0}</span>
+                                    <span className="text-red-500 font-bold">✗ {selectedHistoryItem.failedSentences || 0}</span>
+                                </div>
+                                <span className={theme.secondaryText}>Tổng: {selectedHistoryItem.totalSentences} câu</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }
+
+    // --- SCREEN: GENERATING ---
+    if (appState === "generating") {
+        return (
+            <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4`}>
+                <FontStyles />
+                <div className="text-center space-y-8">
+                    <div className="relative w-20 h-20 mx-auto">
+                        <div className={`absolute inset-0 border-4 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'} rounded-full`} />
+                        <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
+                        <Brain className="absolute inset-0 m-auto text-indigo-500 w-8 h-8 animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className={`text-xl font-bold ${theme.text}`}>AI đang viết bài luận...</h2>
+                        <p className={`${theme.secondaryText}`}>Chủ đề: <span className="text-indigo-500">"{topicInput}"</span></p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- SCREEN: ERROR ---
+    if (appState === "error") {
+        return (
+            <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4`}>
+                <FontStyles />
+                <div className="text-center space-y-6">
+                    <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
+                        <X className="w-10 h-10 text-red-500" />
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className={`text-xl font-bold ${theme.text}`}>Không thể tạo bài học</h2>
+                        <p className={`${theme.secondaryText}`}>Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.</p>
+                    </div>
+                    <button onClick={() => setAppState("home")} className={`px-6 py-3 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-xl transition-all shadow-lg active:scale-95`}>
+                        Quay lại trang chủ
+                    </button>
+                </div>
+            </div>
+        );
+    }
+
+    // --- SCREEN: SUMMARY ---
+    if (appState === "summary") {
+        const finalScore = calculateScore(summaryStats);
+        let grade = "Cần cố gắng";
+        let gradeColor = "text-red-500";
+        if (finalScore >= 90) { grade = "Xuất sắc"; gradeColor = "text-green-500"; }
+        else if (finalScore >= 80) { grade = "Giỏi"; gradeColor = "text-blue-500"; }
+        else if (finalScore >= 65) { grade = "Khá"; gradeColor = "text-yellow-500"; }
+        else if (finalScore >= 50) { grade = "Trung bình"; gradeColor = "text-orange-500"; }
+
+        const radius = 50;
+        const circumference = 2 * Math.PI * radius;
+        const strokeDashoffset = circumference - (finalScore / 100) * circumference;
+        const successfullyCompleted = completedSentences.filter(Boolean).length;
+        const skippedCount = (currentCourse?.sentences?.length || 0) - successfullyCompleted;
+
+        return (
+            <div className={`min-h-screen ${theme.bg} flex items-center justify-center p-4`}>
+                <FontStyles />
+                {isSavingHistory && (
+                    <div className="fixed top-4 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        <span className="text-sm font-bold">Đang lưu lịch sử...</span>
+                    </div>
+                )}
+                <div className={`max-w-3xl w-full ${theme.cardBg} rounded-3xl shadow-2xl p-8 md:p-12 border ${theme.cardBorder}`}>
+                    <div className="text-center mb-8">
+                        <div className="relative w-40 h-40 mx-auto mb-6">
+                            <svg className="w-full h-full" viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="50" fill="none" stroke={isDarkMode ? "#374151" : "#e5e7eb"} strokeWidth="10" />
+                                <circle className="score-circle" cx="60" cy="60" r="50" fill="none" stroke={finalScore >= 80 ? "#10B981" : finalScore >= 50 ? "#F59E0B" : "#EF4444"} strokeWidth="10" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
+                            </svg>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                <span className={`text-4xl font-bold ${theme.text}`}>{finalScore}</span>
+                                <span className={`text-xs uppercase font-bold ${theme.secondaryText}`}>Điểm</span>
+                            </div>
+                        </div>
+                        <h1 className={`text-3xl font-bold ${gradeColor} mb-2`}>{grade}</h1>
+                        <p className={`${theme.secondaryText}`}>Chủ đề: <span className="font-bold text-indigo-500">{currentCourse?.title}</span></p>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                        <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
+                            <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
+                            <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.mistakes}</div>
+                            <div className={`text-xs ${theme.secondaryText}`}>Lỗi sai (-2đ)</div>
+                        </div>
+                        <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
+                            <SkipForward className="w-6 h-6 text-orange-500 mx-auto mb-2" />
+                            <div className={`text-2xl font-bold ${theme.text}`}>{skippedCount}</div>
+                            <div className={`text-xs ${theme.secondaryText}`}>Bỏ qua (-10đ)</div>
+                        </div>
+                        <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
+                            <Lightbulb className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
+                            <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.hints}</div>
+                            <div className={`text-xs ${theme.secondaryText}`}>Gợi ý (0đ)</div>
+                        </div>
+                        <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
+                            <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                            <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.fullAnswers}</div>
+                            <div className={`text-xs ${theme.secondaryText}`}>Đáp án (-15đ)</div>
+                        </div>
+                    </div>
+                    <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-6 rounded-2xl text-left mb-8 border ${theme.cardBorder} max-h-60 overflow-y-auto custom-scrollbar`}>
+                        <h4 className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>Đoạn văn hoàn chỉnh</h4>
+                        <p className={`${theme.text} text-base leading-relaxed`}>
+                            {currentCourse?.sentences.map(s => s.acceptableAnswers[0]).join(" ")}
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row justify-center gap-3">
+                        <button onClick={handleReturnHome} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
+                            <RotateCcw className="w-5 h-5" /> Bài học mới
+                        </button>
+                        <button onClick={() => setAppState("history")} className={`${isDarkMode ? 'bg-slate-600 hover:bg-slate-700' : 'bg-slate-500 hover:bg-slate-600'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
+                            <History className="w-5 h-5" /> Xem lịch sử
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // --- MAIN RENDER (HOME & LEARNING) ---
+
+    return (
+        <div className={`min-h-screen ${theme.bg} ${theme.text} ${appState === 'learning' ? 'p-2 md:p-3' : 'p-4 md:p-6'} flex flex-col font-medium transition-colors duration-300 font-sans`}>
+            <FontStyles />
+
+            {showConfirmModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+                    <div className={`${theme.cardBg} p-6 rounded-2xl shadow-2xl max-w-sm w-full border ${theme.cardBorder}`}>
+                        <h3 className={`text-lg font-bold ${theme.text} mb-2`}>Kết thúc sớm?</h3>
+                        <p className={`${theme.secondaryText} mb-6 text-sm`}>Bạn có chắc muốn dừng? Các câu chưa hoàn thành sẽ bị tính là bỏ qua và trừ điểm.</p>
+                        <div className="flex gap-3 justify-end">
+                            <button onClick={cancelFinishEarly} className={`px-4 py-2 rounded-xl text-sm font-bold ${theme.secondaryText} hover:${theme.bg}`}>Hủy</button>
+                            <button onClick={confirmFinishEarly} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white">Kết thúc ngay</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {appState === 'home' && (
+                <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-bottom-8">
+                    <div className="absolute top-4 left-4 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg cursor-pointer hover:scale-105 transition-transform" onClick={() => setAppState("history")}>
+                            {user?.displayName?.charAt(0) || <User className="w-5 h-5" />}
+                        </div>
+                        <div className="hidden md:block">
+                            <p className={`text-xs font-bold ${theme.secondaryText}`}>Xin chào,</p>
+                            <p className={`font-bold ${theme.text}`}>{user?.displayName || "Học viên"}</p>
+                        </div>
+                    </div>
+                    <div className="absolute top-4 right-4 flex items-center gap-2">
+                        <button onClick={() => setAppState("history")} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' ' + theme.secondaryText + ' hover:' + theme.text : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600'} border ${isDarkMode ? theme.cardBorder : 'border-indigo-200'}`} title="Lịch sử">
+                            <History className="w-5 h-5" />
+                        </button>
+                        <button onClick={toggleTheme} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
+                            {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
+                        <button onClick={handleLogout} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-red-500 hover:bg-red-500/10' : 'bg-gradient-to-br from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-600'} border ${isDarkMode ? theme.cardBorder : 'border-rose-200'}`} title="Đăng xuất">
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="space-y-4 text-center mb-8 mt-12">
+                        <div className={`inline-flex items-center justify-center p-4 ${theme.cardBg} rounded-full shadow-xl mb-2`}>
+                            <Sparkles className="w-12 h-12 text-indigo-500" />
+                        </div>
+                        <h1 className={`text-4xl md:text-5xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
+                            AI English Tutor
+                        </h1>
+                        <p className={`text-base md:text-lg ${theme.secondaryText}`}>Luyện dịch thực tế. Chấm điểm & sửa lỗi thông minh.</p>
+                    </div>
+
+                    <div className={`${theme.cardBg} p-5 rounded-3xl shadow-2xl border ${theme.cardBorder} w-full transition-all`}>
+                        {/* Mode Selection: Write vs Listen */}
+                        <div className="flex justify-center gap-2 mb-4">
+                            {[
+                                { id: 'write', label: 'Dịch Văn', icon: <Edit3 className="w-4 h-4" /> },
+                                { id: 'listen', label: 'Nghe Chính Tả', icon: <Headphones className="w-4 h-4" /> }
+                            ].map((mode) => (
+                                <button
+                                    key={mode.id}
+                                    onClick={() => setLearningMode(mode.id)}
+                                    className={`flex items-center gap-2 px-5 py-3 text-sm font-bold rounded-xl border-2 transition-all ${learningMode === mode.id
+                                        ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-500/30' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent shadow-lg')
+                                        : (isDarkMode ? `${theme.bg} ${theme.secondaryText} border-slate-700 hover:border-indigo-500` : 'bg-gradient-to-br from-slate-50 to-gray-50 text-slate-700 border-slate-300 hover:border-indigo-400 hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600')
+                                        }`}
+                                >
+                                    {mode.icon} {mode.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Length Selection */}
+                        <div className="flex justify-center gap-2 mb-5">
+                            {[{ id: 'short', label: 'Ngắn' }, { id: 'medium', label: 'Vừa' }, { id: 'long', label: 'Dài' }].map((opt) => (
+                                <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all ${lengthOption === opt.id ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent') : (isDarkMode ? `${theme.bg} ${theme.secondaryText} border-slate-700 hover:border-indigo-500` : 'bg-gradient-to-br from-slate-50 to-gray-50 text-slate-700 border-slate-300 hover:border-indigo-400 hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600')}`}>{opt.label}</button>
+                            ))}
+                        </div>
+                        <form onSubmit={handleStartGeneration} className="relative flex items-center">
+                            <div className="pl-4 text-indigo-400"><Brain className="w-6 h-6" /></div>
+                            <input ref={topicInputRef} type="text" value={topicInput} onChange={(e) => setTopicInput(e.target.value)} placeholder="Nhập chủ đề (VD: Cuộc sống ở Sao Hỏa)..." className={`w-full p-4 text-base bg-transparent outline-none ${theme.inputText} placeholder-slate-400 font-medium`} />
+                            <button type="submit" disabled={!topicInput.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl m-1 transition-all shadow-md active:scale-95"><ArrowRight className="w-6 h-6" /></button>
+                        </form>
+                    </div>
+
+                    <div className={`flex flex-wrap justify-center gap-2 text-sm ${theme.secondaryText} mt-6`}>
+                        {suggestedTopics.map((tag) => (
+                            <button key={tag} onClick={() => setTopicInput(tag)} className={`${isDarkMode ? theme.cardBg + ' border-2 border-slate-700 hover:border-indigo-500' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-purple-100'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-700'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
+                        ))}
+                        <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-indigo-500/10 text-indigo-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><RefreshCw className="w-4 h-4" /></button>
+                    </div>
+                </div>
+            )}
+
+            {appState === 'learning' && currentCourse && (
+                <>
+                    <header className="w-full mb-4 flex items-center justify-between px-1 lg:px-4">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setAppState("home")} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
+                            <div>
+                                <h1 className={`text-xl font-bold ${theme.text} flex items-center gap-3`}>{currentCourse.title}</h1>
+                                <span className="text-xs font-bold bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-full uppercase border border-indigo-500/20">{currentCourse.type}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
+                            <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 shadow-sm border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 shadow-sm border border-orange-200'}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
+                            <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
+                                <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
+                        {/* LEFT PANEL - Conditional based on mode */}
+                        {currentCourse.learningMode === "listen" ? (
+                            // LISTEN MODE - Audio Player
+                            <div className={`lg:col-span-8 ${theme.cardBg} p-8 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto flex flex-col items-center justify-center`}>
+                                <div className="text-center">
+                                    {/* Audio Player Icon */}
+                                    <div className={`w-40 h-40 mx-auto mb-8 rounded-full flex items-center justify-center transition-all ${isPlaying
+                                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 shadow-2xl shadow-indigo-500/50 scale-105'
+                                        : isDarkMode ? 'bg-gradient-to-br from-indigo-600 to-purple-700' : 'bg-gradient-to-br from-indigo-500 to-purple-600'
+                                        }`}>
+                                        {isPlaying ? (
+                                            <Pause className="w-20 h-20 text-white animate-pulse" />
+                                        ) : (
+                                            <Headphones className="w-20 h-20 text-white" />
+                                        )}
+                                    </div>
+
+                                    {/* Playback Controls */}
+                                    <div className="flex justify-center gap-4 mb-6">
+                                        <button
+                                            onClick={handlePlayAudio}
+                                            className={`flex items-center gap-2 px-6 py-4 rounded-xl font-bold text-white shadow-lg transition-all active:scale-95 ${isPlaying
+                                                ? 'bg-red-500 hover:bg-red-600'
+                                                : 'bg-indigo-600 hover:bg-indigo-700'
+                                                }`}
+                                        >
+                                            {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+                                            {isPlaying ? 'Tạm dừng' : 'Nghe'}
+                                        </button>
+                                        <button
+                                            onClick={handleReplayAudio}
+                                            className="flex items-center gap-2 px-6 py-4 rounded-xl font-bold bg-purple-600 hover:bg-purple-700 text-white shadow-lg transition-all active:scale-95"
+                                        >
+                                            <RotateCcw className="w-6 h-6" />
+                                            Nghe lại
+                                        </button>
+                                    </div>
+
+                                    {/* Speed Control */}
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className={`text-sm font-bold ${theme.secondaryText}`}>Tốc độ:</span>
+                                        {[0.5, 0.75, 1.0, 1.25, 1.5].map(speed => (
+                                            <button
+                                                key={speed}
+                                                onClick={() => handleSpeedChange(speed)}
+                                                className={`px-3 py-2 text-sm font-bold rounded-lg transition-all ${playbackSpeed === speed
+                                                    ? 'bg-indigo-600 text-white shadow-md'
+                                                    : isDarkMode ? `${theme.bg} ${theme.secondaryText} hover:bg-slate-700` : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                    }`}
+                                            >
+                                                {speed}x
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Progress Indicator */}
+                                    <p className={`text-base ${theme.text} mb-2`}>
+                                        Câu <span className="font-bold text-indigo-500">{currentSentIndex + 1}</span> / {currentCourse.sentences.length}
+                                    </p>
+
+                                    {/* Hint if available */}
+                                    {currentCourse.sentences[currentSentIndex].hint && (
+                                        <div className={`mt-6 p-4 rounded-xl ${isDarkMode ? 'bg-amber-900/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-200'}`}>
+                                            <p className={`text-sm ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} flex items-center gap-2`}>
+                                                <Info className="w-4 h-4" />
+                                                <span className="font-bold">Gợi ý:</span> {currentCourse.sentences[currentSentIndex].hint}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            // WRITE MODE - Vietnamese Text Panel (existing code)
+                            <div className={`lg:col-span-8 ${theme.cardBg} p-6 pt-16 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto custom-scrollbar`}>
+                                <div className={`text-base md:text-lg leading-[3] ${theme.text} font-sans relative`} style={{ zIndex: 1 }}>
+                                    {currentCourse.sentences.map((sent, sIdx) => {
+                                        const isCompleted = completedSentences[sIdx];
+                                        const isActive = sIdx === currentSentIndex;
+                                        if (isCompleted) return <span key={sent.id} className="text-green-500 dark:text-green-400 transition-all duration-500 mr-1">{sent.acceptableAnswers[0]} </span>;
+                                        let containerClass = "transition-all duration-300 inline mr-1 rounded px-1 ";
+                                        if (isActive) containerClass += `${theme.highlightBg} ${theme.highlightText} shadow-[inset_0_0_0_2px_rgba(99,102,241,0.5)] py-1 `;
+                                        else containerClass += isDarkMode ? "text-slate-500 " : "text-gray-800 ";
+                                        return (
+                                            <span key={sent.id} className={containerClass}>
+                                                {sent.segments.map((seg, segIdx) => {
+                                                    const nextSeg = sent.segments[segIdx + 1];
+                                                    const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
+                                                    return <React.Fragment key={segIdx}><span className="tooltip-word group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`tooltip-content invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border-2 border-slate-600' : 'bg-slate-900 text-white border-2 border-slate-700'} text-sm font-medium rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                                })}
+                                            </span>
                                         );
                                     })}
                                 </div>
-                            ) : (<p className={`${theme.secondaryText} text-center py-10`}>Chi tiết bài học không khả dụng cho mục này.</p>)}
-                        </div>
-                        <div className={`p-4 border-t ${theme.cardBorder} ${theme.cardBg} flex justify-between items-center text-sm`}>
-                            <div className="flex gap-4">
-                                <span className={theme.text}>Điểm: <strong className={selectedHistoryItem.score >= 50 ? "text-green-500" : "text-red-500"}>{Math.round(selectedHistoryItem.score)}</strong></span>
-                                <span className="text-green-500 font-bold">✓ {selectedHistoryItem.completedCorrectly || 0}</span>
-                                <span className="text-red-500 font-bold">✗ {selectedHistoryItem.failedSentences || 0}</span>
-                            </div>
-                            <span className={theme.secondaryText}>Tổng: {selectedHistoryItem.totalSentences} câu</span>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-      );
-  }
-
-  // --- SCREEN: GENERATING ---
-  if (appState === "generating") {
-    return (
-      <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4`}>
-        <FontStyles />
-        <div className="text-center space-y-8">
-            <div className="relative w-20 h-20 mx-auto">
-                <div className={`absolute inset-0 border-4 ${isDarkMode ? 'border-slate-700' : 'border-slate-200'} rounded-full`} />
-                <div className="absolute inset-0 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin" />
-                <Brain className="absolute inset-0 m-auto text-indigo-500 w-8 h-8 animate-pulse" />
-            </div>
-            <div className="space-y-2">
-                <h2 className={`text-xl font-bold ${theme.text}`}>AI đang viết bài luận...</h2>
-                <p className={`${theme.secondaryText}`}>Chủ đề: <span className="text-indigo-500">"{topicInput}"</span></p>
-            </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- SCREEN: ERROR ---
-  if (appState === "error") {
-    return (
-      <div className={`min-h-screen ${theme.bg} flex flex-col items-center justify-center p-4`}>
-        <FontStyles />
-        <div className="text-center space-y-6">
-            <div className="w-20 h-20 mx-auto bg-red-500/10 rounded-full flex items-center justify-center">
-                <X className="w-10 h-10 text-red-500" />
-            </div>
-            <div className="space-y-2">
-                <h2 className={`text-xl font-bold ${theme.text}`}>Không thể tạo bài học</h2>
-                <p className={`${theme.secondaryText}`}>Có lỗi xảy ra khi tạo nội dung. Vui lòng thử lại.</p>
-            </div>
-            <button onClick={() => setAppState("home")} className={`px-6 py-3 ${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-500' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-xl transition-all shadow-lg active:scale-95`}>
-                Quay lại trang chủ
-            </button>
-        </div>
-      </div>
-    );
-  }
-
-  // --- SCREEN: SUMMARY ---
-  if (appState === "summary") {
-    const finalScore = calculateScore(summaryStats);
-    let grade = "Cần cố gắng";
-    let gradeColor = "text-red-500";
-    if (finalScore >= 90) { grade = "Xuất sắc"; gradeColor = "text-green-500"; }
-    else if (finalScore >= 80) { grade = "Giỏi"; gradeColor = "text-blue-500"; }
-    else if (finalScore >= 65) { grade = "Khá"; gradeColor = "text-yellow-500"; }
-    else if (finalScore >= 50) { grade = "Trung bình"; gradeColor = "text-orange-500"; }
-
-    const radius = 50;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (finalScore / 100) * circumference;
-    const successfullyCompleted = completedSentences.filter(Boolean).length;
-    const skippedCount = (currentCourse?.sentences?.length || 0) - successfullyCompleted;
-
-    return (
-      <div className={`min-h-screen ${theme.bg} flex items-center justify-center p-4`}>
-        <FontStyles />
-        {isSavingHistory && (
-          <div className="fixed top-4 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-            <span className="text-sm font-bold">Đang lưu lịch sử...</span>
-          </div>
-        )}
-        <div className={`max-w-3xl w-full ${theme.cardBg} rounded-3xl shadow-2xl p-8 md:p-12 border ${theme.cardBorder}`}>
-          <div className="text-center mb-8">
-              <div className="relative w-40 h-40 mx-auto mb-6">
-                  <svg className="w-full h-full" viewBox="0 0 120 120">
-                      <circle cx="60" cy="60" r="50" fill="none" stroke={isDarkMode ? "#374151" : "#e5e7eb"} strokeWidth="10" />
-                      <circle className="score-circle" cx="60" cy="60" r="50" fill="none" stroke={finalScore >= 80 ? "#10B981" : finalScore >= 50 ? "#F59E0B" : "#EF4444"} strokeWidth="10" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className={`text-4xl font-bold ${theme.text}`}>{finalScore}</span>
-                      <span className={`text-xs uppercase font-bold ${theme.secondaryText}`}>Điểm</span>
-                  </div>
-              </div>
-              <h1 className={`text-3xl font-bold ${gradeColor} mb-2`}>{grade}</h1>
-              <p className={`${theme.secondaryText}`}>Chủ đề: <span className="font-bold text-indigo-500">{currentCourse?.title}</span></p>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
-                  <XCircle className="w-6 h-6 text-red-500 mx-auto mb-2" />
-                  <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.mistakes}</div>
-                  <div className={`text-xs ${theme.secondaryText}`}>Lỗi sai (-2đ)</div>
-              </div>
-              <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
-                  <SkipForward className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-                  <div className={`text-2xl font-bold ${theme.text}`}>{skippedCount}</div>
-                  <div className={`text-xs ${theme.secondaryText}`}>Bỏ qua (-10đ)</div>
-              </div>
-              <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
-                  <Lightbulb className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-                  <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.hints}</div>
-                  <div className={`text-xs ${theme.secondaryText}`}>Gợi ý (0đ)</div>
-              </div>
-              <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-4 rounded-2xl text-center border ${theme.cardBorder}`}>
-                  <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                  <div className={`text-2xl font-bold ${theme.text}`}>{summaryStats.fullAnswers}</div>
-                  <div className={`text-xs ${theme.secondaryText}`}>Đáp án (-15đ)</div>
-              </div>
-          </div>
-          <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-6 rounded-2xl text-left mb-8 border ${theme.cardBorder} max-h-60 overflow-y-auto custom-scrollbar`}>
-             <h4 className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>Đoạn văn hoàn chỉnh</h4>
-             <p className={`${theme.text} text-base leading-relaxed`}>
-               {currentCourse?.sentences.map(s => s.acceptableAnswers[0]).join(" ")}
-             </p>
-          </div>
-          <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <button onClick={handleReturnHome} className={`${isDarkMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
-                <RotateCcw className="w-5 h-5" /> Bài học mới
-            </button>
-            <button onClick={() => setAppState("history")} className={`${isDarkMode ? 'bg-slate-600 hover:bg-slate-700' : 'bg-slate-500 hover:bg-slate-600'} text-white font-bold py-3 px-8 rounded-xl flex items-center justify-center gap-2 shadow-lg transition-transform active:scale-95`}>
-                <History className="w-5 h-5" /> Xem lịch sử
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // --- MAIN RENDER (HOME & LEARNING) ---
-  
-  return (
-    <div className={`min-h-screen ${theme.bg} ${theme.text} ${appState === 'learning' ? 'p-2 md:p-3' : 'p-4 md:p-6'} flex flex-col font-medium transition-colors duration-300 font-sans`}>
-      <FontStyles />
-      
-      {showConfirmModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
-            <div className={`${theme.cardBg} p-6 rounded-2xl shadow-2xl max-w-sm w-full border ${theme.cardBorder}`}>
-                <h3 className={`text-lg font-bold ${theme.text} mb-2`}>Kết thúc sớm?</h3>
-                <p className={`${theme.secondaryText} mb-6 text-sm`}>Bạn có chắc muốn dừng? Các câu chưa hoàn thành sẽ bị tính là bỏ qua và trừ điểm.</p>
-                <div className="flex gap-3 justify-end">
-                    <button onClick={cancelFinishEarly} className={`px-4 py-2 rounded-xl text-sm font-bold ${theme.secondaryText} hover:${theme.bg}`}>Hủy</button>
-                    <button onClick={confirmFinishEarly} className="px-4 py-2 rounded-xl text-sm font-bold bg-red-500 hover:bg-red-600 text-white">Kết thúc ngay</button>
-                </div>
-            </div>
-        </div>
-      )}
-
-      {appState === 'home' && (
-        <div className="flex-1 flex flex-col items-center justify-center max-w-2xl mx-auto w-full animate-in fade-in slide-in-from-bottom-8">
-            <div className="absolute top-4 left-4 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold text-lg shadow-lg cursor-pointer hover:scale-105 transition-transform" onClick={() => setAppState("history")}>
-                    {user?.displayName?.charAt(0) || <User className="w-5 h-5" />}
-                </div>
-                <div className="hidden md:block">
-                    <p className={`text-xs font-bold ${theme.secondaryText}`}>Xin chào,</p>
-                    <p className={`font-bold ${theme.text}`}>{user?.displayName || "Học viên"}</p>
-                </div>
-            </div>
-            <div className="absolute top-4 right-4 flex items-center gap-2">
-                <button onClick={() => setAppState("history")} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' ' + theme.secondaryText + ' hover:' + theme.text : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600'} border ${isDarkMode ? theme.cardBorder : 'border-indigo-200'}`} title="Lịch sử">
-                    <History className="w-5 h-5" />
-                </button>
-                <button onClick={toggleTheme} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 border border-orange-200'}`}>
-                    {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
-                <button onClick={handleLogout} className={`p-2.5 rounded-full ${isDarkMode ? theme.cardBg + ' text-red-500 hover:bg-red-500/10' : 'bg-gradient-to-br from-rose-50 to-red-50 hover:from-rose-100 hover:to-red-100 text-rose-600'} border ${isDarkMode ? theme.cardBorder : 'border-rose-200'}`} title="Đăng xuất">
-                    <LogOut className="w-5 h-5" />
-                </button>
-            </div>
-
-            <div className="space-y-4 text-center mb-8 mt-12">
-                <div className={`inline-flex items-center justify-center p-4 ${theme.cardBg} rounded-full shadow-xl mb-2`}>
-                    <Sparkles className="w-12 h-12 text-indigo-500" />
-                </div>
-                <h1 className={`text-4xl md:text-5xl font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-900'} tracking-tight`}>
-                    AI English Tutor
-                </h1>
-                <p className={`text-base md:text-lg ${theme.secondaryText}`}>Luyện dịch thực tế. Chấm điểm & sửa lỗi thông minh.</p>
-            </div>
-
-            <div className={`${theme.cardBg} p-5 rounded-3xl shadow-2xl border ${theme.cardBorder} w-full transition-all`}>
-                <div className="flex justify-center gap-2 mb-5">
-                    {[{ id: 'short', label: 'Ngắn' }, { id: 'medium', label: 'Vừa' }, { id: 'long', label: 'Dài' }].map((opt) => (
-                        <button key={opt.id} onClick={() => setLengthOption(opt.id)} className={`px-4 py-2 text-xs font-bold rounded-xl border-2 transition-all ${lengthOption === opt.id ? (isDarkMode ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white border-transparent') : (isDarkMode ? `${theme.bg} ${theme.secondaryText} border-slate-700 hover:border-indigo-500` : 'bg-gradient-to-br from-slate-50 to-gray-50 text-slate-700 border-slate-300 hover:border-indigo-400 hover:from-indigo-50 hover:to-purple-50 hover:text-indigo-600')}`}>{opt.label}</button>
-                    ))}
-                </div>
-                <form onSubmit={handleStartGeneration} className="relative flex items-center">
-                    <div className="pl-4 text-indigo-400"><Brain className="w-6 h-6" /></div>
-                    <input ref={topicInputRef} type="text" value={topicInput} onChange={(e) => setTopicInput(e.target.value)} placeholder="Nhập chủ đề (VD: Cuộc sống ở Sao Hỏa)..." className={`w-full p-4 text-base bg-transparent outline-none ${theme.inputText} placeholder-slate-400 font-medium`} />
-                    <button type="submit" disabled={!topicInput.trim()} className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-xl m-1 transition-all shadow-md active:scale-95"><ArrowRight className="w-6 h-6" /></button>
-                </form>
-            </div>
-
-            <div className={`flex flex-wrap justify-center gap-2 text-sm ${theme.secondaryText} mt-6`}>
-                {suggestedTopics.map((tag) => (
-                    <button key={tag} onClick={() => setTopicInput(tag)} className={`${isDarkMode ? theme.cardBg + ' border-2 border-slate-700 hover:border-indigo-500' : 'bg-gradient-to-br from-indigo-50 to-purple-50 border-2 border-indigo-200 hover:border-indigo-400 hover:from-indigo-100 hover:to-purple-100'} px-4 py-2 rounded-full ${isDarkMode ? 'hover:text-indigo-400' : 'hover:text-indigo-700'} transition-all shadow-sm hover:shadow-md ${isDarkMode ? 'text-slate-300' : 'text-slate-700'} font-medium`}>{tag}</button>
-                ))}
-                <button onClick={() => setSuggestedTopics(getRandomTopics())} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-indigo-500/10 text-indigo-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><RefreshCw className="w-4 h-4" /></button>
-            </div>
-        </div>
-      )}
-
-      {appState === 'learning' && currentCourse && (
-        <>
-        <header className="w-full mb-4 flex items-center justify-between px-1 lg:px-4">
-            <div className="flex items-center gap-4">
-                <button onClick={() => setAppState("home")} className={`p-2 rounded-full transition-all ${isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'bg-gradient-to-br from-indigo-50 to-purple-50 hover:from-indigo-100 hover:to-purple-100 text-indigo-600 border border-indigo-200'}`}><ArrowRight className="w-6 h-6 rotate-180" /></button>
-                <div>
-                    <h1 className={`text-xl font-bold ${theme.text} flex items-center gap-3`}>{currentCourse.title}</h1>
-                    <span className="text-xs font-bold bg-indigo-500/10 text-indigo-500 px-3 py-1 rounded-full uppercase border border-indigo-500/20">{currentCourse.type}</span>
-                </div>
-            </div>
-            <div className="flex items-center gap-3">
-                <button onClick={handleFinishEarly} className={`hidden md:flex items-center gap-1 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-slate-500/10 hover:bg-slate-500/20 text-slate-400' : 'bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200'} text-xs font-bold transition-colors`}><SkipForward className="w-4 h-4" /> Kết thúc</button>
-                <button onClick={toggleTheme} className={`p-2 rounded-full ${isDarkMode ? theme.cardBg + ' text-yellow-400 shadow-sm border ' + theme.cardBorder : 'bg-gradient-to-br from-orange-50 to-amber-50 hover:from-orange-100 hover:to-amber-100 text-orange-600 shadow-sm border border-orange-200'}`}>{isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}</button>
-                <div className={`hidden md:flex ${theme.cardBg} px-4 py-2 rounded-xl shadow-sm border ${theme.cardBorder} text-sm font-bold`}>
-                    <span className={`${theme.secondaryText} mr-2`}>TIẾN ĐỘ</span> <span className="text-indigo-500">{currentSentIndex + 1} <span className={theme.secondaryText}>/</span> {currentCourse.sentences.length}</span>
-                </div>
-            </div>
-        </header>
-
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 min-h-0 px-1 lg:px-4">
-            <div className={`lg:col-span-8 ${theme.cardBg} p-6 pt-16 rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} overflow-y-auto h-[30vh] lg:h-auto custom-scrollbar`}>
-                <div className={`text-base md:text-lg leading-[3] ${theme.text} font-sans relative`} style={{zIndex: 1}}>
-                    {currentCourse.sentences.map((sent, sIdx) => {
-                        const isCompleted = completedSentences[sIdx];
-                        const isActive = sIdx === currentSentIndex;
-                        if (isCompleted) return <span key={sent.id} className="text-green-500 dark:text-green-400 transition-all duration-500 mr-1">{sent.acceptableAnswers[0]} </span>;
-                        let containerClass = "transition-all duration-300 inline mr-1 rounded px-1 ";
-                        if (isActive) containerClass += `${theme.highlightBg} ${theme.highlightText} shadow-[inset_0_0_0_2px_rgba(99,102,241,0.5)] py-1 `;
-                        else containerClass += isDarkMode ? "text-slate-500 " : "text-gray-800 ";
-                        return (
-                            <span key={sent.id} className={containerClass}>
-                                {sent.segments.map((seg, segIdx) => {
-                                    const nextSeg = sent.segments[segIdx + 1];
-                                    const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                    return <React.Fragment key={segIdx}><span className="tooltip-word group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`tooltip-content invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border-2 border-slate-600' : 'bg-slate-900 text-white border-2 border-slate-700'} text-sm font-medium rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
-                                })}
-                            </span>
-                        );
-                    })}
-                </div>
-            </div>
-
-            <div className="lg:col-span-4 flex flex-col h-full gap-4 min-h-[500px]">
-                <div className={`flex-1 ${theme.cardBg} rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} flex flex-col overflow-hidden relative`}>
-                    <div className={`flex-1 p-6 overflow-y-auto ${theme.bg} space-y-6 custom-scrollbar`}>
-                        <div className="flex gap-4 animate-in slide-in-from-left-4">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0"><Brain className="w-6 h-6 text-indigo-600" /></div>
-                            <div className={`${theme.cardBg} p-5 rounded-3xl rounded-tl-none shadow-sm border ${theme.cardBorder} w-full`}>
-                                <p className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>Dịch câu này</p>
-                                <div className={`text-lg p-4 rounded-xl border-2 italic font-bold ${isDarkMode ? 'bg-indigo-900/60 text-indigo-100 border-indigo-700' : 'bg-indigo-100 text-indigo-950 border-indigo-300'}`}>
-                                    "{currentCourse.sentences[currentSentIndex].segments.map((s, i) => { const next = currentCourse.sentences[currentSentIndex].segments[i+1]; const space = next && !/^[.,!?;:)]/.test(next.text) ? ' ' : ''; return s.text + space; })}"
-                                </div>
-                            </div>
-                        </div>
-                        {feedbackState !== 'idle' && feedbackState !== 'checking' && (
-                            <div className="flex gap-4 flex-row-reverse animate-in slide-in-from-right-4">
-                                <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-br from-indigo-100 to-purple-100'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className={`w-6 h-6 rounded-full ${isDarkMode ? 'bg-slate-500' : 'bg-gradient-to-br from-indigo-400 to-purple-500'}`}></div></div>
-                                <div className={`p-5 rounded-3xl rounded-tr-none shadow-lg max-w-[85%] text-lg relative overflow-visible z-10 font-medium border-2 ${isDarkMode ? (feedbackState === 'correct' ? 'bg-slate-800 text-white border-green-500' : 'bg-slate-800 text-white border-red-500') : (feedbackState === 'correct' ? 'bg-white text-slate-900 border-green-500' : 'bg-white text-slate-900 border-red-500')}`}>
-                                    {renderUserDiff()}
-                                </div>
                             </div>
                         )}
-                        {feedbackState === "correct" && (
-                            <div className="flex gap-4 animate-in slide-in-from-left-4">
-                                <div className="w-10 h-10 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0"><CheckCircle className="w-6 h-6 text-green-600" /></div>
-                                <div className={`${theme.successBg} p-5 rounded-3xl rounded-tl-none border ${isDarkMode ? 'border-green-800' : 'border-green-200'} w-full`}>
-                                    <p className={`font-bold ${theme.successText} text-lg mb-2`}>Tuyệt vời!</p>
-                                    {aiFeedbackMsg && <p className={`text-sm ${theme.successText} mb-3 italic`}>{String(aiFeedbackMsg)}</p>}
-                                    {matchedAnswer && <div className={`mt-3 ${theme.cardBg} p-3 rounded-xl border ${theme.cardBorder}`}><div className="flex items-center gap-2 mb-2"><GitCompare className="w-4 h-4 text-indigo-400" /><span className="text-xs font-bold text-indigo-400 uppercase">Đáp án mẫu</span></div><p className={`${theme.text} text-sm italic`}>{matchedAnswer}</p></div>}
-                                    <button onClick={handleNextSentence} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">Câu tiếp theo <ArrowRight className="w-5 h-5" /></button>
-                                </div>
-                            </div>
-                        )}
-                        {feedbackState === "checking" && (
-                            <div className="flex gap-4 animate-in slide-in-from-left-4">
-                                <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0 animate-pulse"><Search className="w-6 h-6 text-indigo-600" /></div>
-                                <div className={`${theme.cardBg} p-4 rounded-3xl rounded-tl-none border ${theme.cardBorder} text-sm italic ${theme.secondaryText}`}>AI đang kiểm tra ngữ nghĩa câu trả lời của bạn...</div>
-                            </div>
-                        )}
-                        {feedbackState === "incorrect" && (
-                            <div className="flex gap-4 animate-in slide-in-from-left-4">
-                                <div className="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-6 h-6 text-red-600" /></div>
-                                <div className={`${theme.errorBg} p-5 rounded-3xl rounded-tl-none border ${isDarkMode ? 'border-red-800' : 'border-red-200'} w-full`}>
-                                    <p className={`font-bold ${theme.errorText} mb-3 text-lg`}>Chưa chính xác lắm.</p>
-                                    <div className={`mb-3 ${theme.cardBg} p-4 rounded-xl border ${isDarkMode ? 'border-red-500/30' : 'border-red-200'}`}>
-                                        <div className="flex items-center gap-2 mb-2"><Search className="w-4 h-4 text-indigo-400" /><span className="text-xs font-bold text-indigo-400 uppercase">AI Phân tích lỗi sai</span></div>
-                                        <p className={`${theme.text} text-sm italic leading-relaxed`}>{String(aiFeedbackMsg || "Câu trả lời chưa sát nghĩa. Hãy kiểm tra từ vựng và ngữ pháp.")}</p>
+
+                        <div className="lg:col-span-4 flex flex-col h-full gap-4 min-h-[500px]">
+                            <div className={`flex-1 ${theme.cardBg} rounded-3xl ${isDarkMode ? 'shadow-xl' : 'shadow-2xl shadow-slate-300/50'} border-2 ${theme.cardBorder} flex flex-col overflow-hidden relative`}>
+                                <div className={`flex-1 p-6 overflow-y-auto ${theme.bg} space-y-6 custom-scrollbar`}>
+                                    <div className="flex gap-4 animate-in slide-in-from-left-4">
+                                        <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0"><Brain className="w-6 h-6 text-indigo-600" /></div>
+                                        <div className={`${theme.cardBg} p-5 rounded-3xl rounded-tl-none shadow-sm border ${theme.cardBorder} w-full`}>
+                                            <p className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>
+                                                {currentCourse.learningMode === "listen" ? "Nghe và gõ lại" : "Dịch câu này"}
+                                            </p>
+                                            {currentCourse.learningMode === "listen" ? (
+                                                <div className={`text-lg p-4 rounded-xl border-2 italic font-bold ${isDarkMode ? 'bg-purple-900/60 text-purple-100 border-purple-700' : 'bg-purple-100 text-purple-950 border-purple-300'}`}>
+                                                    🎧 Nghe audio và gõ chính xác những gì bạn nghe được
+                                                </div>
+                                            ) : (
+                                                <div className={`text-lg p-4 rounded-xl border-2 italic font-bold ${isDarkMode ? 'bg-indigo-900/60 text-indigo-100 border-indigo-700' : 'bg-indigo-100 text-indigo-950 border-indigo-300'}`}>
+                                                    "{currentCourse.sentences[currentSentIndex].segments.map((s, i) => { const next = currentCourse.sentences[currentSentIndex].segments[i + 1]; const space = next && !/^[.,!?;:)]/.test(next.text) ? ' ' : ''; return s.text + space; })}"
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
+                                    {feedbackState !== 'idle' && feedbackState !== 'checking' && (
+                                        <div className="flex gap-4 flex-row-reverse animate-in slide-in-from-right-4">
+                                            <div className={`w-10 h-10 ${isDarkMode ? 'bg-slate-700' : 'bg-gradient-to-br from-indigo-100 to-purple-100'} rounded-2xl flex items-center justify-center flex-shrink-0`}><div className={`w-6 h-6 rounded-full ${isDarkMode ? 'bg-slate-500' : 'bg-gradient-to-br from-indigo-400 to-purple-500'}`}></div></div>
+                                            <div className={`p-5 rounded-3xl rounded-tr-none shadow-lg max-w-[85%] text-lg relative overflow-visible z-10 font-medium border-2 ${isDarkMode ? (feedbackState === 'correct' ? 'bg-slate-800 text-white border-green-500' : 'bg-slate-800 text-white border-red-500') : (feedbackState === 'correct' ? 'bg-white text-slate-900 border-green-500' : 'bg-white text-slate-900 border-red-500')}`}>
+                                                {renderUserDiff()}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {feedbackState === "correct" && (
+                                        <div className="flex gap-4 animate-in slide-in-from-left-4">
+                                            <div className="w-10 h-10 bg-green-100 rounded-2xl flex items-center justify-center flex-shrink-0"><CheckCircle className="w-6 h-6 text-green-600" /></div>
+                                            <div className={`${theme.successBg} p-5 rounded-3xl rounded-tl-none border ${isDarkMode ? 'border-green-800' : 'border-green-200'} w-full`}>
+                                                <p className={`font-bold ${theme.successText} text-lg mb-2`}>Tuyệt vời!</p>
+                                                {aiFeedbackMsg && <p className={`text-sm ${theme.successText} mb-3 italic`}>{String(aiFeedbackMsg)}</p>}
+                                                {matchedAnswer && <div className={`mt-3 ${theme.cardBg} p-3 rounded-xl border ${theme.cardBorder}`}><div className="flex items-center gap-2 mb-2"><GitCompare className="w-4 h-4 text-indigo-400" /><span className="text-xs font-bold text-indigo-400 uppercase">Đáp án mẫu</span></div><p className={`${theme.text} text-sm italic`}>{matchedAnswer}</p></div>}
+                                                <button onClick={handleNextSentence} className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">Câu tiếp theo <ArrowRight className="w-5 h-5" /></button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {feedbackState === "checking" && (
+                                        <div className="flex gap-4 animate-in slide-in-from-left-4">
+                                            <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center flex-shrink-0 animate-pulse"><Search className="w-6 h-6 text-indigo-600" /></div>
+                                            <div className={`${theme.cardBg} p-4 rounded-3xl rounded-tl-none border ${theme.cardBorder} text-sm italic ${theme.secondaryText}`}>AI đang kiểm tra ngữ nghĩa câu trả lời của bạn...</div>
+                                        </div>
+                                    )}
+                                    {feedbackState === "incorrect" && (
+                                        <div className="flex gap-4 animate-in slide-in-from-left-4">
+                                            <div className="w-10 h-10 bg-red-100 rounded-2xl flex items-center justify-center flex-shrink-0"><AlertTriangle className="w-6 h-6 text-red-600" /></div>
+                                            <div className={`${theme.errorBg} p-5 rounded-3xl rounded-tl-none border ${isDarkMode ? 'border-red-800' : 'border-red-200'} w-full`}>
+                                                <p className={`font-bold ${theme.errorText} mb-3 text-lg`}>Chưa chính xác lắm.</p>
+                                                <div className={`mb-3 ${theme.cardBg} p-4 rounded-xl border ${isDarkMode ? 'border-red-500/30' : 'border-red-200'}`}>
+                                                    <div className="flex items-center gap-2 mb-2"><Search className="w-4 h-4 text-indigo-400" /><span className="text-xs font-bold text-indigo-400 uppercase">AI Phân tích lỗi sai</span></div>
+                                                    <p className={`${theme.text} text-sm italic leading-relaxed`}>{String(aiFeedbackMsg || "Câu trả lời chưa sát nghĩa. Hãy kiểm tra từ vựng và ngữ pháp.")}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={chatEndRef} />
+                                </div>
+                                <div className={`p-4 md:p-6 ${theme.cardBg} border-t ${theme.cardBorder} z-20 transition-colors duration-300`}>
+                                    <form onSubmit={handleCheck} className="relative group">
+                                        <textarea ref={inputRef} value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={feedbackState === 'correct' || feedbackState === 'checking'} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e); } }} placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."} className={`w-full p-4 pr-14 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`} rows="2" />
+                                        {feedbackState !== 'correct' && feedbackState !== 'checking' && (
+                                            <button type="submit" disabled={!userInput.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
+                                        )}
+                                    </form>
                                 </div>
                             </div>
-                        )}
-                        <div ref={chatEndRef} />
-                    </div>
-                    <div className={`p-4 md:p-6 ${theme.cardBg} border-t ${theme.cardBorder} z-20 transition-colors duration-300`}>
-                        <form onSubmit={handleCheck} className="relative group">
-                            <textarea ref={inputRef} value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={feedbackState === 'correct' || feedbackState === 'checking'} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e); } }} placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."} className={`w-full p-4 pr-14 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`} rows="2" />
-                            {feedbackState !== 'correct' && feedbackState !== 'checking' && (
-                                <button type="submit" disabled={!userInput.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
+                            {feedbackState !== 'correct' && (
+                                <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
+                                    {!showHint ? (
+                                        <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
+                                    ) : (
+                                        <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
+                                            <button onClick={() => setShowHint(false)} className={`absolute top-3 right-3 p-1.5 rounded-full transition-colors ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-amber-400' : 'bg-amber-200/50 hover:bg-amber-300/70 text-amber-700'}`} title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
+                                            <div className="space-y-4">
+                                                <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
+                                                {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
+                                                <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
+                                                {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             )}
-                        </form>
+                        </div>
                     </div>
-                </div>
-                {feedbackState !== 'correct' && (
-                    <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
-                        {!showHint ? (
-                            <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
-                        ) : (
-                            <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
-                                <button onClick={() => setShowHint(false)} className={`absolute top-3 right-3 p-1.5 rounded-full transition-colors ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-amber-400' : 'bg-amber-200/50 hover:bg-amber-300/70 text-amber-700'}`} title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
-                                <div className="space-y-4">
-                                    <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
-                                    {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
-                                    <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
-                                    {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-        </div>
-        </>
-      )}
-    </div>
-  );
+                </>
+            )
+            }
+        </div >
+    );
 }
