@@ -647,6 +647,15 @@ export default function App() {
                 setMatchedAnswer(null);
                 setAiFeedbackMsg("Chưa chính xác. Kiểm tra lại!");
 
+                // REVEAL CORRECT WORD for the wrong part
+                const { revealed, wrong } = getProgressiveReveal(userInput, correctText);
+                const correctWords = correctText.trim().split(/\s+/);
+                const correctWrongWords = wrong.map(w => ({
+                    index: w.index,
+                    word: correctWords[w.index] // Show correct word instead of user's typo
+                }));
+                setWrongWords(correctWrongWords);
+
                 // Save error details
                 const newErrors = [...sentenceErrors];
                 if (!newErrors[currentSentIndex]) newErrors[currentSentIndex] = [];
@@ -1584,6 +1593,10 @@ export default function App() {
                                         <textarea ref={inputRef} value={userInput} onChange={(e) => {
                                             const newInput = e.target.value;
                                             setUserInput(newInput);
+
+                                            // Reset feedback state when typing
+                                            if (feedbackState === 'incorrect') setFeedbackState('idle');
+
                                             if (currentCourse?.learningMode === "listen" && currentCourse.sentences[currentSentIndex]) {
                                                 const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
                                                 setRevealedWords(revealed);
