@@ -16,6 +16,7 @@ import {
     sendEmailVerification
 } from 'firebase/auth';
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, deleteDoc, doc } from 'firebase/firestore';
+import { getProgressiveReveal, renderProgressiveText, isListenSentenceCorrect } from './ListenModeHelpers';
 
 // --- FIREBASE SETUP ---
 // Cấu hình thủ công (Manual Config) cho dự án của bạn
@@ -357,6 +358,9 @@ export default function App() {
     // --- LISTEN MODE STATE ---
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
+    const [hintMode, setHintMode] = useState('none'); // 'none', 'one', 'all'
+    const [revealedWords, setRevealedWords] = useState([]); // Array of correct word indices
+    const [wrongWords, setWrongWords] = useState([]); // Array of {index, word} for wrong inputs
 
     const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
     const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
@@ -743,6 +747,10 @@ export default function App() {
             setShowHint(false);
             setShowFullAnswer(false);
             sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
+            //  Reset Listen mode states
+            setHintMode('none');
+            setRevealedWords([]);
+            setWrongWords([]);
         } else {
             finishLesson();
         }
@@ -751,6 +759,15 @@ export default function App() {
     const handleFinishEarly = () => setShowConfirmModal(true);
     const confirmFinishEarly = () => { setShowConfirmModal(false); finishLesson(); };
     const cancelFinishEarly = () => setShowConfirmModal(false);
+
+    const handleSkipSentence = () => {
+        // Mark current sentence as incomplete (skipped)
+        const newCompleted = [...completedSentences];
+        newCompleted[currentSentIndex] = false;
+        setCompletedSentences(newCompleted);
+        statsRef.current.mistakes += 1; // Count skip as mistake
+        handleNextSentence();
+    };
 
     // --- HISTORY CONTEXT MENU ---
     const handleHistoryContextMenu = (e, itemId) => {
@@ -1084,10 +1101,16 @@ export default function App() {
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <p className={`font-medium ${theme.text} mb-2 text-base`}>{sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : "")}</p>
+                                                            <p className={`font-medium ${theme.text} mb-2 text-base`}>
+                                                                {selectedHistoryItem.courseData.learningMode === 'listen'
+                                                                    ? (sent.english || "Audio Question")
+                                                                    : (sent.vietnamese_full || (sent.segments ? sent.segments.map(s => s.text).join("") : ""))}
+                                                            </p>
                                                             <div className={`${isDarkMode ? 'bg-slate-800' : 'bg-slate-100'} p-3 rounded-lg mb-2`}>
                                                                 <p className="text-xs font-bold text-indigo-400 mb-1">Đáp án đúng:</p>
-                                                                <p className="text-green-500 italic text-sm font-medium">{sent.acceptableAnswers[0]}</p>
+                                                                <p className="text-green-500 italic text-sm font-medium">
+                                                                    {selectedHistoryItem.courseData.learningMode === 'listen' ? sent.english : sent.acceptableAnswers[0]}
+                                                                </p>
                                                             </div>
                                                             {errorDetails && errorCount > 0 && (
                                                                 <div className={`${isDarkMode ? 'bg-red-900/20' : 'bg-red-50'} p-3 rounded-lg border ${isDarkMode ? 'border-red-800' : 'border-red-200'}`}>
@@ -1252,7 +1275,7 @@ export default function App() {
                     <div className={`${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'} p-6 rounded-2xl text-left mb-8 border ${theme.cardBorder} max-h-60 overflow-y-auto custom-scrollbar`}>
                         <h4 className={`text-xs font-bold ${theme.secondaryText} uppercase mb-2`}>Đoạn văn hoàn chỉnh</h4>
                         <p className={`${theme.text} text-base leading-relaxed`}>
-                            {currentCourse?.sentences.map(s => s.acceptableAnswers[0]).join(" ")}
+                            {currentCourse?.sentences.map(s => currentCourse.learningMode === 'listen' ? s.english : s.acceptableAnswers[0]).join(" ")}
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row justify-center gap-3">
@@ -1441,6 +1464,26 @@ export default function App() {
                                         Câu <span className="font-bold text-indigo-500">{currentSentIndex + 1}</span> / {currentCourse.sentences.length}
                                     </p>
 
+                                    {/* Progressive revealed text */}
+                                    {(revealedWords.length > 0 || wrongWords.length > 0) && (
+                                        <div className={`${theme.cardBg} p-4 rounded-xl border-2 ${theme.cardBorder} mt-4`}>
+                                            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Đã gõ:</p>
+                                            <div className="text-lg font-mono space-x-2">
+                                                {renderProgressiveText(
+                                                    currentCourse.sentences[currentSentIndex].english,
+                                                    revealedWords,
+                                                    wrongWords,
+                                                    hintMode,
+                                                    isDarkMode
+                                                ).map((w, i) => (
+                                                    <span key={w.key} className={w.className} style={w.style}>
+                                                        {w.word}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Hint if available */}
                                     {currentCourse.sentences[currentSentIndex].hint && (
                                         <div className={`mt-6 p-4 rounded-xl ${isDarkMode ? 'bg-amber-900/20 border border-amber-900/30' : 'bg-amber-50 border border-amber-200'}`}>
@@ -1538,9 +1581,23 @@ export default function App() {
                                 </div>
                                 <div className={`p-4 md:p-6 ${theme.cardBg} border-t ${theme.cardBorder} z-20 transition-colors duration-300`}>
                                     <form onSubmit={handleCheck} className="relative group">
-                                        <textarea ref={inputRef} value={userInput} onChange={(e) => setUserInput(e.target.value)} disabled={feedbackState === 'correct' || feedbackState === 'checking'} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e); } }} placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."} className={`w-full p-4 pr-14 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`} rows="2" />
+                                        <textarea ref={inputRef} value={userInput} onChange={(e) => {
+                                            const newInput = e.target.value;
+                                            setUserInput(newInput);
+                                            if (currentCourse?.learningMode === "listen" && currentCourse.sentences[currentSentIndex]) {
+                                                const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
+                                                setRevealedWords(revealed);
+                                                setWrongWords(wrong);
+                                                if (hintMode !== 'none' && newInput.length > 0) setHintMode('none');
+                                            }
+                                        }} disabled={feedbackState === 'correct' || feedbackState === 'checking'} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e); } }} placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."} className={`w-full p-4 pr-14 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`} rows="2" />
                                         {feedbackState !== 'correct' && feedbackState !== 'checking' && (
-                                            <button type="submit" disabled={!userInput.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
+                                            <>
+                                                {currentCourse?.learningMode === "listen" && (
+                                                    <button type="button" onClick={handleSkipSentence} className="absolute right-16 top-1/2 -translate-y-1/2 p-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl shadow-lg active:scale-95 transition-all" title="Bỏ qua"><SkipForward className="w-5 h-5" /></button>
+                                                )}
+                                                <button type="submit" disabled={!userInput.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
+                                            </>
                                         )}
                                     </form>
                                 </div>
@@ -1548,7 +1605,11 @@ export default function App() {
                             {feedbackState !== 'correct' && (
                                 <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
                                     {!showHint ? (
-                                        <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
+                                        currentCourse?.learningMode === "listen" ? (
+                                            <button onClick={() => setHintMode(hintMode === 'none' ? 'one' : hintMode === 'one' ? 'all' : 'none')} className={`w-full flex items-center justify-center gap-2 py-4 ${hintMode !== 'none' ? (isDarkMode ? 'bg-amber-500/30 text-amber-300' : 'bg-amber-200 text-amber-800') : (isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200')} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> {hintMode === 'none' ? 'Gợi ý' : hintMode === 'one' ? 'Gợi ý: 1 từ' : 'Gợi ý: Cả câu'}</button>
+                                        ) : (
+                                            <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
+                                        )
                                     ) : (
                                         <div className={`p-5 ${isDarkMode ? 'bg-amber-900/20' : 'bg-amber-50'} animate-in fade-in relative border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'}`}>
                                             <button onClick={() => setShowHint(false)} className={`absolute top-3 right-3 p-1.5 rounded-full transition-colors ${isDarkMode ? 'bg-white/10 hover:bg-white/20 text-amber-400' : 'bg-amber-200/50 hover:bg-amber-300/70 text-amber-700'}`} title="Thu gọn"><ChevronUp className="w-4 h-4" /></button>
@@ -1559,7 +1620,7 @@ export default function App() {
                                                     <div><p className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2`}><Sparkles className="w-4 h-4" /> Gợi ý Ngữ pháp</p><p className={`${theme.text} text-sm mb-3 font-medium ${theme.cardBg} p-3 rounded-xl border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'}`}>{currentCourse.sentences[currentSentIndex].grammar_hint}</p></div>
                                                 )}
                                                 {currentCourse.sentences[currentSentIndex].structure && <div className="grid grid-cols-1 md:grid-cols-2 gap-3"><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Info className="w-4 h-4" /> Cấu trúc</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} font-mono text-xs`}>{currentCourse.sentences[currentSentIndex].structure}</div></div><div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2 flex items-center gap-2"><Book className="w-4 h-4" /> Ví dụ</p><div className={`${theme.text} text-sm ${theme.cardBg} p-2 rounded-lg border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-300'} italic`}><p className="mb-1 text-indigo-400">{currentCourse.sentences[currentSentIndex].example_en}</p><p className="text-xs opacity-80">{currentCourse.sentences[currentSentIndex].example_vi}</p></div></div></div>}
-                                                <div><p className="text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2">Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>
+                                                {currentCourse.sentences[currentSentIndex].vocabulary && <div><p className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'} uppercase mb-2`}>Từ vựng cần dùng</p><div className="flex flex-wrap gap-2">{currentCourse.sentences[currentSentIndex].vocabulary.map((v, i) => (<span key={i} className={`text-xs ${theme.cardBg} px-2 py-1 rounded-lg ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} border-2 ${isDarkMode ? 'border-amber-900' : 'border-amber-300'} font-medium`}>{v.word}: {v.meaning}</span>))}</div></div>}
                                                 {!showFullAnswer ? (<button onClick={handleShowFullAnswer} className={`text-xs font-bold ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-amber-700 hover:text-amber-900'} hover:underline`}>Xem đáp án đầy đủ</button>) : (<p className={`${theme.text} font-serif italic text-base border-t ${theme.cardBorder} pt-2 mt-2`}>"{currentCourse.learningMode === "listen" ? currentCourse.sentences[currentSentIndex].english : currentCourse.sentences[currentSentIndex].acceptableAnswers[0]}"</p>)}
                                             </div>
                                         </div>
