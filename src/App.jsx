@@ -1639,13 +1639,13 @@ export default function App() {
                                     {!showHint ? (
                                         currentCourse?.learningMode === "listen" ? (
                                             <div className={`w-full p-4 ${isDarkMode ? 'bg-slate-800' : 'bg-gradient-to-r from-amber-50 to-yellow-50'} border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'} rounded-lg`}>
-                                                <div className="flex items-center justify-between mb-2">
+                                                <div className="flex items-center justify-center mb-2">
                                                     <span className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} uppercase flex items-center gap-2`}>
                                                         <Lightbulb className="w-4 h-4" /> Chế độ gợi ý
                                                     </span>
                                                 </div>
                                                 {/* Toggle Switch */}
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center justify-center gap-3">
                                                     <span className={`text-sm font-medium ${hintMode === 'one' ? (isDarkMode ? 'text-amber-300' : 'text-amber-700') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>1 từ</span>
                                                     <button
                                                         onClick={() => setHintMode(hintMode === 'one' ? 'all' : 'one')}
