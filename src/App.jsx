@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import packageInfo from '../package.json';
+const version = packageInfo.version;
 import { Send, Lightbulb, CheckCircle, XCircle, RefreshCw, BookOpen, ArrowRight, Sparkles, Brain, RotateCcw, AlertCircle, Loader2, Moon, Sun, AlertTriangle, Info, Search, Book, ChevronUp, User, History, LogOut, Calendar, Award, SkipForward, GitCompare, Mail, Lock, ChevronRight, X, KeyRound, Headphones, Play, Pause, Edit3 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import {
@@ -654,6 +656,17 @@ export default function App() {
                     word: correctWords[w.index] // Show correct word instead of user's typo
                 }));
                 setWrongWords(correctWrongWords);
+
+                // Build hint message based on hintMode
+                let hintMessage = "Chưa chính xác. Kiểm tra lại!";
+                if (hintMode === 'one' && revealed.length < correctWords.length) {
+                    // Show next word hint
+                    hintMessage += ` Gợi ý từ tiếp theo: "${correctWords[revealed.length]}"`;
+                } else if (hintMode === 'all') {
+                    // Show full sentence hint
+                    hintMessage += ` Gợi ý toàn bộ: "${correctText}"`;
+                }
+                setAiFeedbackMsg(hintMessage);
 
                 // Save error details
                 const newErrors = [...sentenceErrors];
@@ -1471,26 +1484,6 @@ export default function App() {
                                     <p className={`text-base ${theme.text} mb-2`}>
                                         Câu <span className="font-bold text-indigo-500">{currentSentIndex + 1}</span> / {currentCourse.sentences.length}
                                     </p>
-
-                                    {/* Progressive revealed text */}
-                                    {(revealedWords.length > 0 || wrongWords.length > 0) && (
-                                        <div className={`${theme.cardBg} p-4 rounded-xl border-2 ${theme.cardBorder} mt-4`}>
-                                            <p className="text-xs font-bold text-slate-400 uppercase mb-2">Đã gõ:</p>
-                                            <div className="text-lg font-mono space-x-2">
-                                                {renderProgressiveText(
-                                                    currentCourse.sentences[currentSentIndex].english,
-                                                    revealedWords,
-                                                    wrongWords,
-                                                    hintMode,
-                                                    isDarkMode
-                                                ).map((w, i) => (
-                                                    <span key={w.key} className={w.className} style={w.style}>
-                                                        {w.word}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
 
                                     {/* Hint if available */}
                                     {currentCourse.sentences[currentSentIndex].hint && (
