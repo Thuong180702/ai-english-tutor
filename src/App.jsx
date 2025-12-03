@@ -1638,7 +1638,24 @@ export default function App() {
                                 <div className={`${theme.cardBg} rounded-3xl shadow-lg border ${theme.cardBorder} overflow-hidden flex-shrink-0 transition-all duration-300`}>
                                     {!showHint ? (
                                         currentCourse?.learningMode === "listen" ? (
-                                            <button onClick={() => setHintMode(hintMode === 'none' ? 'one' : hintMode === 'one' ? 'all' : 'none')} className={`w-full flex items-center justify-center gap-2 py-4 ${hintMode !== 'none' ? (isDarkMode ? 'bg-amber-500/30 text-amber-300' : 'bg-amber-200 text-amber-800') : (isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200')} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> {hintMode === 'none' ? 'Gợi ý' : hintMode === 'one' ? 'Gợi ý: 1 từ' : 'Gợi ý: Cả câu'}</button>
+                                            <div className={`w-full p-4 ${isDarkMode ? 'bg-slate-800' : 'bg-gradient-to-r from-amber-50 to-yellow-50'} border-2 ${isDarkMode ? 'border-amber-900/30' : 'border-amber-200'} rounded-lg`}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className={`text-xs font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'} uppercase flex items-center gap-2`}>
+                                                        <Lightbulb className="w-4 h-4" /> Chế độ gợi ý
+                                                    </span>
+                                                </div>
+                                                {/* Toggle Switch */}
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`text-sm font-medium ${hintMode === 'one' ? (isDarkMode ? 'text-amber-300' : 'text-amber-700') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>1 từ</span>
+                                                    <button
+                                                        onClick={() => setHintMode(hintMode === 'one' ? 'all' : 'one')}
+                                                        className={`relative w-14 h-7 rounded-full transition-colors ${hintMode === 'all' ? 'bg-amber-500' : (isDarkMode ? 'bg-slate-600' : 'bg-slate-300')}`}
+                                                    >
+                                                        <div className={`absolute top-1 ${hintMode === 'all' ? 'right-1' : 'left-1'} w-5 h-5 bg-white rounded-full shadow-md transition-all`}></div>
+                                                    </button>
+                                                    <span className={`text-sm font-medium ${hintMode === 'all' ? (isDarkMode ? 'text-amber-300' : 'text-amber-700') : (isDarkMode ? 'text-slate-500' : 'text-slate-400')}`}>Cả câu</span>
+                                                </div>
+                                            </div>
                                         ) : (
                                             <button onClick={handleShowHint} className={`w-full flex items-center justify-center gap-2 py-4 ${isDarkMode ? 'text-amber-500 hover:bg-amber-500/10' : 'bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 border-2 border-amber-200'} font-bold text-sm transition-colors`}><Lightbulb className="w-5 h-5" /> XEM GỢI Ý</button>
                                         )
