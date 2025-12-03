@@ -1597,7 +1597,6 @@ export default function App() {
                                                     const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
                                                     setRevealedWords(revealed);
                                                     setWrongWords(wrong);
-                                                    if (hintMode !== 'none' && newInput.length > 0) setHintMode('none');
                                                 }
                                             }}
                                             disabled={feedbackState === 'correct' || feedbackState === 'checking'}
