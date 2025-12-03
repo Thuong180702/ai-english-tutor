@@ -2,12 +2,13 @@
   "name": "ai-english-tutor",
   "homepage": "https://thuong180702.github.io/ai-english-tutor",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "predeploy": "npm run build",
+    "version-bump": "npm version patch --no-git-tag-version",
+    "predeploy": "npm run version-bump && npm run build",
     "deploy": "gh-pages -d dist",
     "lint": "eslint .",
     "preview": "vite preview"
