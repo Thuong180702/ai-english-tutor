@@ -622,12 +622,11 @@ export default function App() {
         if (!userInput.trim()) return;
         const currentSent = currentCourse.sentences[currentSentIndex];
 
-        // LISTEN MODE: Simple word-by-word comparison (like dailydictation)
         if (currentCourse.learningMode === "listen") {
             const correctText = currentSent.english;
-
-            // Check if completely correct
-            const isCompletelyCorrect = userInput.trim().toLowerCase() === correctText.toLowerCase();
+            // Normalize text for comparison (remove punctuation, extra spaces, case-insensitive)
+            const normalize = (text) => text.trim().toLowerCase().replace(/[.,!?;:"'`]/g, '').replace(/\s+/g, ' ');
+            const isCompletelyCorrect = normalize(userInput) === normalize(correctText);
 
             if (isCompletelyCorrect) {
                 setFeedbackState("correct");
@@ -1520,7 +1519,7 @@ export default function App() {
                                                 {sent.segments.map((seg, segIdx) => {
                                                     const nextSeg = sent.segments[segIdx + 1];
                                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                                    return <React.Fragment key={segIdx}><span className="tooltip-word group relative cursor-help inline-block hover:text-indigo-500 transition-colors">{seg.text}<span className={`tooltip-content invisible group-hover:visible absolute left-1/2 -translate-x-1/2 bottom-full mb-1 px-3 py-2 ${isDarkMode ? 'bg-slate-800 text-white border-2 border-slate-600' : 'bg-slate-900 text-white border-2 border-slate-700'} text-sm font-medium rounded-lg shadow-2xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>{seg.trans}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                                    return <React.Fragment key={segIdx}><span>{seg.text}</span>{shouldAddSpace && ' '}</React.Fragment>;
                                                 })}
                                             </span>
                                         );
@@ -1589,28 +1588,54 @@ export default function App() {
                                     <div ref={chatEndRef} />
                                 </div>
                                 <div className={`p-4 md:p-6 ${theme.cardBg} border-t ${theme.cardBorder} z-20 transition-colors duration-300`}>
-                                    <form onSubmit={handleCheck} className="relative group">
-                                        <textarea ref={inputRef} value={userInput} onChange={(e) => {
-                                            const newInput = e.target.value;
-                                            setUserInput(newInput);
+                                    <form onSubmit={handleCheck}>
+                                        <textarea
+                                            ref={inputRef}
+                                            value={userInput}
+                                            onChange={(e) => {
+                                                const newInput = e.target.value;
+                                                setUserInput(newInput);
 
-                                            // Reset feedback state when typing
-                                            if (feedbackState === 'incorrect') setFeedbackState('idle');
+                                                // Reset feedback state when typing
+                                                if (feedbackState === 'incorrect') setFeedbackState('idle');
 
-                                            if (currentCourse?.learningMode === "listen" && currentCourse.sentences[currentSentIndex]) {
-                                                const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
-                                                setRevealedWords(revealed);
-                                                setWrongWords(wrong);
-                                                if (hintMode !== 'none' && newInput.length > 0) setHintMode('none');
-                                            }
-                                        }} disabled={feedbackState === 'correct' || feedbackState === 'checking'} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e); } }} placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."} className={`w-full p-4 pr-14 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`} rows="2" />
+                                                if (currentCourse?.learningMode === "listen" && currentCourse.sentences[currentSentIndex]) {
+                                                    const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
+                                                    setRevealedWords(revealed);
+                                                    setWrongWords(wrong);
+                                                    if (hintMode !== 'none' && newInput.length > 0) setHintMode('none');
+                                                }
+                                            }}
+                                            disabled={feedbackState === 'correct' || feedbackState === 'checking'}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    if (feedbackState !== 'correct' && feedbackState !== 'checking') handleCheck(e);
+                                                }
+                                            }}
+                                            placeholder={feedbackState === 'correct' ? "Đang chờ..." : "Nhập câu dịch..."}
+                                            className={`w-full p-4 rounded-2xl ${theme.inputBg} ${theme.inputBorder} border-2 focus:border-indigo-500 outline-none resize-none text-base shadow-inner ${theme.inputText}`}
+                                            rows="2"
+                                        />
                                         {feedbackState !== 'correct' && feedbackState !== 'checking' && (
-                                            <>
+                                            <div className="flex justify-end gap-2 mt-3">
                                                 {currentCourse?.learningMode === "listen" && (
-                                                    <button type="button" onClick={handleSkipSentence} className="absolute right-16 top-1/2 -translate-y-1/2 p-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl shadow-lg active:scale-95 transition-all" title="Bỏ qua"><SkipForward className="w-5 h-5" /></button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleSkipSentence}
+                                                        className="px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-xl shadow-lg active:scale-95 transition-all font-bold flex items-center gap-2"
+                                                    >
+                                                        <SkipForward className="w-4 h-4" /> Bỏ qua
+                                                    </button>
                                                 )}
-                                                <button type="submit" disabled={!userInput.trim()} className="absolute right-3 top-1/2 -translate-y-1/2 p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all"><Send className="w-5 h-5" /></button>
-                                            </>
+                                                <button
+                                                    type="submit"
+                                                    disabled={!userInput.trim()}
+                                                    className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg active:scale-95 disabled:opacity-50 transition-all font-bold flex items-center gap-2"
+                                                >
+                                                    <Send className="w-4 h-4" /> Gửi
+                                                </button>
+                                            </div>
                                         )}
                                     </form>
                                 </div>

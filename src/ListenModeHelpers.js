@@ -64,22 +64,18 @@ export const renderProgressiveText = (correctText, revealed, wrong, hintMode, is
                 style: { fontWeight: 'bold' }
             });
         } else {
-            // Unrevealed words - show based on hint mode
+            // Unrevealed words - show based on hint mode OR if it's the next word after revealed ones
             const nextIndex = revealed.length;
             const isNextWord = i === nextIndex;
-            const shouldShowHint = (hintMode === 'one' && isNextWord) || hintMode === 'all';
+            const shouldShowHint = isNextWord || (hintMode === 'one' && isNextWord) || hintMode === 'all';
 
             if (shouldShowHint) {
-                // Show hint (first 1-2 letters + underscores)
-                const hintText = word.length > 2
-                    ? word.substring(0, 2) + '_'.repeat(word.length - 2)
-                    : '_'.repeat(word.length);
-
+                // Show full word as hint
                 elements.push({
                     key: `word-${i}`,
-                    word: hintText,
+                    word: word,
                     className: isDarkMode ? 'text-amber-400' : 'text-amber-600',
-                    style: { fontStyle: 'italic' }
+                    style: { fontStyle: 'italic', fontWeight: 'bold' }
                 });
             } else {
                 // Hidden word - just underscores
