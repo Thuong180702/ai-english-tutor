@@ -360,7 +360,7 @@ export default function App() {
     // --- LISTEN MODE STATE ---
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-    const [hintMode, setHintMode] = useState('none'); // 'none', 'one', 'all'
+    const [hintMode, setHintMode] = useState('one'); // 'none', 'one', 'all'
     const [revealedWords, setRevealedWords] = useState([]); // Array of correct word indices
     const [wrongWords, setWrongWords] = useState([]); // Array of {index, word} for wrong inputs
 
@@ -635,7 +635,8 @@ export default function App() {
                 const newCompleted = [...completedSentences];
                 newCompleted[currentSentIndex] = true;
                 setCompletedSentences(newCompleted);
-                setAiFeedbackMsg("Chính xác!");
+                const vietnameseHint = currentSent.hint || "";
+                setAiFeedbackMsg(`Chính xác! ${vietnameseHint}`);
                 // Use getWordDiff for visual display
                 const diff = getWordDiff(userInput, correctText);
                 setDetailedFeedback(diff);
@@ -1663,6 +1664,11 @@ export default function App() {
                 </>
             )
             }
+
+            {/* Version Display - Shows on all pages */}
+            <div className="fixed bottom-4 right-4 text-xs opacity-50 hover:opacity-100 transition-opacity z-50">
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>v{version}</span>
+            </div>
         </div >
     );
 }
