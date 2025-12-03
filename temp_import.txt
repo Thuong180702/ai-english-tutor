@@ -1,0 +1,3 @@
+import React, { useState, useEffect, useRef } from 'react';
+import packageInfo from '../package.json';
+const version = packageInfo.version;
