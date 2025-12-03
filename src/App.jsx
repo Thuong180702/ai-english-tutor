@@ -1464,7 +1464,7 @@ export default function App() {
                                     </div>
 
                                     {/* Speed Control */}
-                                    <div className="flex items-center gap-2 mb-4">
+                                    <div className="flex items-center justify-center gap-2 mb-4">
                                         <span className={`text-sm font-bold ${theme.secondaryText}`}>Tốc độ:</span>
                                         {[0.5, 0.75, 1.0, 1.25, 1.5].map(speed => (
                                             <button

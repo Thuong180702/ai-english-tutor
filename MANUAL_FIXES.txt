@@ -1,0 +1,38 @@
+# This file documents all 4 manual changes needed in App.jsx
+# User should apply these changes manually
+
+## CHANGE 1: Line 363 - Default hint mode to 'one'
+# FIND:    const [hintMode, setHintMode] = useState('none');
+# REPLACE: const [hintMode, setHintMode] = useState('one');
+
+## CHANGE 2: Line 1467 - Add justify-center to speed controls  
+# FIND:    <div className="flex items-center gap-2 mb-4">
+# REPLACE: <div className="flex items-center justify-center gap-2 mb-4">
+
+## CHANGE 3: Line 638 - Add Vietnamese hint to feedback
+# FIND THIS SINGLE LINE:
+#          setAiFeedbackMsg("Chính xác!");
+# 
+# REPLACE WITH THESE TWO LINES:
+#          const vietnameseHint = currentSent.hint || "";
+#          setAiFeedbackMsg(`Chính xác! ${vietnameseHint}`);
+
+## CHANGE 4: Around line 1665 - Add version display before closing }
+# FIND THESE LINES:
+#            )
+#            }
+#         </div >
+#     );
+# }
+#
+# REPLACE WITH:
+#            )
+#            }
+#            
+#            {/* Version Display - Shows on all pages */}
+#            <div className="fixed bottom-4 right-4 text-xs opacity-50 hover:opacity-100 transition-opacity z-50">
+#                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>v{version}</span>
+#            </div>
+#         </div >
+#     );
+# }
