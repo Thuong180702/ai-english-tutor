@@ -53,9 +53,40 @@ const FontStyles = () => (
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(156, 163, 175, 0.5); border-radius: 20px; }
     .score-circle { transition: stroke-dashoffset 1s ease-in-out; transform: rotate(-90deg); transform-origin: 50% 50%; }
-    .tooltip-word { position: relative; z-index: 10; }
+    .tooltip-word { position: relative; z-index: 10; cursor: help; }
     .tooltip-word:hover { z-index: 999999; }
-    .tooltip-content { z-index: 999999 !important; }
+    .tooltip-content { 
+      visibility: hidden; 
+      opacity: 0;
+      position: absolute; 
+      bottom: 125%; 
+      left: 50%; 
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.9); 
+      color: #fff; 
+      text-align: center; 
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      white-space: nowrap; 
+      z-index: 999999 !important;
+      font-size: 0.875rem;
+      transition: opacity 0.2s, visibility 0.2s;
+      pointer-events: none;
+    }
+    .tooltip-word:hover .tooltip-content { 
+      visibility: visible; 
+      opacity: 1; 
+    }
+    .tooltip-content::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(0, 0, 0, 0.9) transparent transparent transparent;
+    }
   `}</style>
 );
 
