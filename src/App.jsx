@@ -1535,11 +1535,16 @@ export default function App() {
                                                     const nextSeg = sent.segments[segIdx + 1];
                                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
                                                     return <React.Fragment key={segIdx}>
-                                                        <span className="relative inline-block group cursor-help">
-                                                            {seg.text}
-                                                            <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-[9999] pointer-events-none">
+                                                        <span
+                                                            className="relative inline-block group cursor-help"
+                                                            title={seg.translation}
+                                                        >
+                                                            <span className="hover:bg-yellow-200/30 dark:hover:bg-yellow-600/20 rounded px-0.5 transition-colors">
+                                                                {seg.text}
+                                                            </span>
+                                                            <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-[9999] pointer-events-none shadow-xl">
                                                                 {seg.translation}
-                                                                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></span>
+                                                                <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
                                                             </span>
                                                         </span>
                                                         {shouldAddSpace && ' '}
