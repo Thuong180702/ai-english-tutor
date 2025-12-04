@@ -18,7 +18,7 @@ import {
     sendEmailVerification
 } from 'firebase/auth';
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, limit, deleteDoc, doc } from 'firebase/firestore';
-import { getProgressiveReveal, renderProgressiveText, isListenSentenceCorrect } from './ListenModeHelpers';
+
 
 // --- FIREBASE SETUP ---
 // Cấu hình thủ công (Manual Config) cho dự án của bạn
@@ -392,8 +392,7 @@ export default function App() {
     const [isPlaying, setIsPlaying] = useState(false);
     const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
     const [hintMode, setHintMode] = useState('one'); // 'none', 'one', 'all'
-    const [revealedWords, setRevealedWords] = useState([]); // Array of correct word indices
-    const [wrongWords, setWrongWords] = useState([]); // Array of {index, word} for wrong inputs
+
 
     const statsRef = useRef({ mistakes: 0, hints: 0, fullAnswers: 0 });
     const sentenceStatsRef = useRef({ hintUsed: false, fullUsed: false });
@@ -680,20 +679,13 @@ export default function App() {
                 setMatchedAnswer(null);
                 setAiFeedbackMsg("Chưa chính xác. Kiểm tra lại!");
 
-                // REVEAL CORRECT WORD for the wrong part
-                const { revealed, wrong } = getProgressiveReveal(userInput, correctText);
-                const correctWords = correctText.trim().split(/\s+/);
-                const correctWrongWords = wrong.map(w => ({
-                    index: w.index,
-                    word: correctWords[w.index] // Show correct word instead of user's typo
-                }));
-                setWrongWords(correctWrongWords);
-
                 // Build hint message based on hintMode
+                const correctWords = correctText.trim().split(/\s+/);
                 let hintMessage = "Chưa chính xác. Kiểm tra lại!";
-                if (hintMode === 'one' && revealed.length < correctWords.length) {
+                if (hintMode === 'one' && userInput.trim().split(/\s+/).length < correctWords.length) {
                     // Show next word hint
-                    hintMessage += ` Gợi ý từ tiếp theo: "${correctWords[revealed.length]}"`;
+                    const nextWordIndex = userInput.trim().split(/\s+/).length;
+                    hintMessage += ` Gợi ý từ tiếp theo: "${correctWords[nextWordIndex]}"`;
                 } else if (hintMode === 'all') {
                     // Show full sentence hint
                     hintMessage += ` Gợi ý toàn bộ: "${correctText}"`;
@@ -802,8 +794,6 @@ export default function App() {
             sentenceStatsRef.current = { hintUsed: false, fullUsed: false };
             //  Reset Listen mode states
             setHintMode('none');
-            setRevealedWords([]);
-            setWrongWords([]);
         } else {
             finishLesson();
         }
@@ -1623,12 +1613,6 @@ export default function App() {
 
                                                 // Reset feedback state when typing
                                                 if (feedbackState === 'incorrect') setFeedbackState('idle');
-
-                                                if (currentCourse?.learningMode === "listen" && currentCourse.sentences[currentSentIndex]) {
-                                                    const { revealed, wrong } = getProgressiveReveal(newInput, currentCourse.sentences[currentSentIndex].english);
-                                                    setRevealedWords(revealed);
-                                                    setWrongWords(wrong);
-                                                }
                                             }}
                                             disabled={feedbackState === 'correct' || feedbackState === 'checking'}
                                             onKeyDown={(e) => {
