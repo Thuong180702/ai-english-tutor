@@ -1513,7 +1513,7 @@ export default function App() {
                                                 {sent.segments.map((seg, segIdx) => {
                                                     const nextSeg = sent.segments[segIdx + 1];
                                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                                    return <React.Fragment key={segIdx}><span>{seg.text}</span>{shouldAddSpace && ' '}</React.Fragment>;
+                                                    return <React.Fragment key={segIdx}><span className="tooltip-word">{seg.text}<span className="tooltip-content">{seg.translation}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
                                                 })}
                                             </span>
                                         );
