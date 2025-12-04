@@ -1534,7 +1534,16 @@ export default function App() {
                                                 {sent.segments.map((seg, segIdx) => {
                                                     const nextSeg = sent.segments[segIdx + 1];
                                                     const shouldAddSpace = nextSeg && !/^[.,!?;:)]/.test(nextSeg.text);
-                                                    return <React.Fragment key={segIdx}><span className="tooltip-word">{seg.text}<span className="tooltip-content">{seg.translation}</span></span>{shouldAddSpace && ' '}</React.Fragment>;
+                                                    return <React.Fragment key={segIdx}>
+                                                        <span className="relative inline-block group cursor-help">
+                                                            {seg.text}
+                                                            <span className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-[9999] pointer-events-none">
+                                                                {seg.translation}
+                                                                <span className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-gray-900"></span>
+                                                            </span>
+                                                        </span>
+                                                        {shouldAddSpace && ' '}
+                                                    </React.Fragment>;
                                                 })}
                                             </span>
                                         );

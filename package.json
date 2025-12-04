@@ -2,7 +2,7 @@
   "name": "ai-english-tutor",
   "homepage": "https://thuong180702.github.io/ai-english-tutor",
   "private": true,
-  "version": "0.0.23",
+  "version": "0.0.24",
   "type": "module",
   "scripts": {
     "dev": "vite",
