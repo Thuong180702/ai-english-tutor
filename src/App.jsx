@@ -1537,13 +1537,13 @@ export default function App() {
                                                     return <React.Fragment key={segIdx}>
                                                         <span
                                                             className="relative inline-block group cursor-help"
-                                                            title={seg.translation}
+                                                            title={seg.trans}
                                                         >
                                                             <span className="hover:bg-yellow-200/30 dark:hover:bg-yellow-600/20 rounded px-0.5 transition-colors">
                                                                 {seg.text}
                                                             </span>
                                                             <span className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap z-[9999] pointer-events-none shadow-xl">
-                                                                {seg.translation}
+                                                                {seg.trans}
                                                                 <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></span>
                                                             </span>
                                                         </span>
